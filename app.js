@@ -40,6 +40,8 @@ function drawRow(host, from, to, o) {
   for (let row = 0; row < 6; row++) {
     const s = 5 - row, y = TOP + row * SG;
     el('line', { x1: from === 1 ? LEFT - 30 : LEFT, x2: LEFT + n * FW, y1: y, y2: y, stroke: '#cbd5e1', 'stroke-width': 1 + s * 0.4 }, svg);
+    if (o.exact && from === 1 && o.exact[s] < 0)
+      el('text', { x: LEFT - 28, y: y + 6, 'text-anchor': 'middle', fill: '#f87171', 'font-size': 20, 'font-weight': 700 }, svg).textContent = '×';
     for (let f = from === 1 ? 0 : from; f <= to; f++) {
       const nt = noteAt(s, f);
       let on, hi = false, fill, op = 1;
@@ -50,7 +52,7 @@ function drawRow(host, from, to, o) {
         on = o.inScale.has(nt);
         hi = o.hl ? o.hl.includes(nt) : false;
         if (!on && !hi && !o.all) continue;
-        const isRoot = o.hl ? (hi && nt === o.hl[0]) : nt === o.rootPc;
+        const isRoot = nt === o.rootPc && (!o.hl || hi);
         fill = isRoot ? '#f59e0b' : hi ? '#4ade80' : on ? '#38bdf8' : '#334155';
         op = o.hl && !hi ? .25 : on ? 1 : .8;
       }
@@ -126,7 +128,7 @@ function renderEscalas() {
     const ns = scaleNotes(state.root, name), lb = degreeLabels(name);
     const cells = ns.map((n, i) => {
       const on = state.sel && state.sel.scale === name && state.sel.idx === i;
-      return `<div class="cell ${on ? 'on' : ''} ${i === 0 ? 'root' : ''}" data-s="${name}" data-i="${i}"><b>${nn(n)}</b><small>${lb[i]}</small></div>`;
+      return `<button type="button" class="cell ${on ? 'on' : ''} ${i === 0 ? 'root' : ''}" data-s="${name}" data-i="${i}"><b>${nn(n)}</b><small>${lb[i]}</small></button>`;
     }).join('');
     return `<div class="scard ${name === state.scale ? 'active' : ''}"><div class="name">${name}</div><div class="row">${cells}</div></div>`;
   }).join('');
@@ -146,7 +148,7 @@ function renderCampos() {
     const f = harmonicField(state.root, name, state.sharps);
     if (!f) return '';
     const cells = f.map((c, i) =>
-      `<div class="cell ${i === 0 ? 'root' : ''}" data-i="${i}" data-s="${name}"><b>${c.chord}</b><small>${c.roman}</small></div>`).join('');
+      `<button type="button" class="cell ${i === 0 ? 'root' : ''}" data-i="${i}" data-s="${name}"><b>${c.chord}</b><small>${c.roman}</small></button>`).join('');
     return `<div class="scard"><div class="name">${nn(state.root)} ${name}</div><div class="row">${cells}</div></div>`;
   }).join('');
   document.querySelectorAll('#fieldCards .cell').forEach(c => c.onclick = () => {
@@ -161,40 +163,51 @@ function goChord(pc, type) {
 
 /* ---------- ABA ACORDES ---------- */
 const memo = {};
+const MAX_SHOW = 40;
+const STRING_NAMES = ['6ª corda (a mais grossa)', '5ª corda', '4ª corda', '3ª corda', '2ª corda', '1ª corda (a mais fina)'];
 function renderAcordes() {
   const t = CHORD_TYPES[state.ctype], rootPc = state.croot;
   const key = rootPc + ':' + state.ctype;
   const all = memo[key] || (memo[key] = generateVoicings(rootPc, t.iv));
-  const list = filterVoicings(all, state.cf).slice(0, 40);
+  const filtered = filterVoicings(all, state.cf), list = filtered.slice(0, MAX_SHOW);
   const pcs = t.iv.map(i => (rootPc + i) % 12);
+  const cg = hasCaged(state.ctype), caged = cg ? cagedShapes(rootPc, state.ctype) : [];
+
   $('chordRoots').innerHTML = Array.from({ length: 12 }, (_, i) =>
-    `<button data-p="${i}" class="${i === rootPc ? 'on' : ''}">${dual(i)}</button>`).join('');
+    `<button type="button" data-p="${i}" class="${i === rootPc ? 'on' : ''}">${dual(i)}</button>`).join('');
   document.querySelectorAll('#chordRoots button').forEach(b => b.onclick = () => { state.croot = +b.dataset.p; state.cvoice = null; renderAcordes(); });
+
+  const count = !filtered.length
+    ? 'Nenhuma forma com esses filtros. Tente afrouxar um filtro (por exemplo "Nota mais grave: Qualquer").'
+    : filtered.length > MAX_SHOW
+      ? `Mostrando as ${MAX_SHOW} formas mais fáceis (de ${filtered.length} encontradas). Toque numa para ver os detalhes.`
+      : `${filtered.length} forma${filtered.length === 1 ? '' : 's'} de tocar, das mais fáceis para as mais difíceis. Toque numa para ver os detalhes.`;
   $('chordInfo').innerHTML =
     `<p><b>${dual(rootPc, t.suffix)}</b> — ${ptName(rootPc, state.sharps)} ${t.label.toLowerCase()}</p>` +
-    `<p>Notas do acorde: <b>${pcs.map(nn).join(' - ')}</b></p><p>${t.desc}</p>` +
-    `<p>${list.length ? `${list.length} formas de tocar, das mais fáceis para as mais difíceis. Toque numa para ver os detalhes.` : 'Nenhuma forma com esses filtros. Tente afrouxar um filtro (por exemplo "Nota mais grave: Qualquer").'}</p>`;
-  const cg = hasCaged(state.ctype);
+    `<p>Notas do acorde: <b>${pcs.map(nn).join(' - ')}</b></p><p>${t.desc}</p><p>${count}</p>`;
+
+  const card = (v, id, head, foot) =>
+    `<button type="button" class="vc ${state.cvoice === id ? 'active' : ''}" data-id="${id}">${head}${chordSvg(v, rootPc)}<small>${foot}</small>` +
+    (v.barre ? '<span class="tag">pestana</span>' : '') + (v.hasOpen ? '<span class="tag">cordas soltas</span>' : '') + '</button>';
+  const where = v => v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta';
+
   $('cagedWrap').hidden = !cg;
-  if (cg) $('caged').innerHTML = cagedShapes(rootPc, state.ctype).map(v =>
-    `<div class="vc"><b class="shape">Forma de ${v.shape}</b>${chordSvg(v, rootPc)}<small>${v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta'}${v.barre ? ' · pestana' : ''}</small></div>`).join('');
-  $('voicings').innerHTML = list.map((v, i) => {
-    const tags = (v.barre ? '<span class="tag">pestana</span>' : '') + (v.hasOpen ? '<span class="tag">cordas soltas</span>' : '');
-    return `<div class="vc ${state.cvoice === i ? 'active' : ''}" data-i="${i}">${chordSvg(v, rootPc)}` +
-      `<small>${v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta'} · ${v.fingers} dedo${v.fingers === 1 ? '' : 's'}</small>${tags}</div>`;
-  }).join('');
-  document.querySelectorAll('#voicings .vc').forEach(c => c.onclick = () => {
-    const i = +c.dataset.i; state.cvoice = state.cvoice === i ? null : i; renderAcordes();
+  $('caged').innerHTML = caged.map((v, i) => card(v, 'c' + i, `<b class="shape">Forma de ${v.shape}</b>`, where(v))).join('');
+  $('voicings').innerHTML = list.map((v, i) =>
+    card(v, 'v' + i, '', `${where(v)} · ${v.fingers} dedo${v.fingers === 1 ? '' : 's'}`)).join('');
+  document.querySelectorAll('#caged .vc, #voicings .vc').forEach(c => c.onclick = () => {
+    const id = c.dataset.id; state.cvoice = state.cvoice === id ? null : id; renderAcordes();
     if (state.cvoice !== null) $('voiceInfo').scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
-  const v = state.cvoice !== null ? list[state.cvoice] : null;
+  const id = state.cvoice;
+  const v = !id ? null : id[0] === 'c' ? caged[+id.slice(1)] : list[+id.slice(1)];
   $('voiceInfo').hidden = $('board2wrap').hidden = false;
-  const names = ['6ª corda (a mais grossa)', '5ª corda', '4ª corda', '3ª corda', '2ª corda', '1ª corda (a mais fina)'];
   if (v) {
-    $('voiceInfo').innerHTML = `<p><b>Como tocar:</b></p><ol class="str">` + v.frets.map((f, s) =>
-      `<li>${names[s]}: ${f < 0 ? 'não tocar' : f === 0 ? `solta (${nn(noteAt(s, 0))})` : `casa ${f} (${nn(noteAt(s, f))})`}</li>`).join('') + '</ol>' +
-      (v.barre ? `<p>Use a pestana na casa ${v.minF} (um dedo apoiado sobre várias cordas).</p>` : '');
+    $('voiceInfo').innerHTML = `<p><b>Como tocar${v.shape ? ` (forma de ${v.shape})` : ''}:</b></p><ol class="str">` + v.frets.map((f, s) =>
+      `<li>${STRING_NAMES[s]}: ${f < 0 ? 'não tocar' : f === 0 ? `solta (${nn(noteAt(s, 0))})` : `casa ${f} (${nn(noteAt(s, f))})`}</li>`).join('') + '</ol>' +
+      (v.barre ? `<p>Use a pestana na casa ${v.minF} (um dedo apoiado sobre várias cordas).</p>` : '') +
+      '<p>No braço abaixo aparece só esta forma. Toque nela de novo para ver todas as posições.</p>';
   } else $('voiceInfo').innerHTML = '<p>Abaixo: todas as posições das notas deste acorde no braço. Toque numa forma acima para ver só ela.</p>';
   drawBoard($('board2'), v ? (v.maxF > 12 ? 24 : 12) : state.frets2, { inScale: new Set(pcs), rootPc, all: false, exact: v ? v.frets : null });
 }
@@ -226,6 +239,7 @@ function setTab(t) {
   state.tab = t;
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   ['escalas', 'campos', 'acordes', 'aprender'].forEach(x => $('tab-' + x).hidden = x !== t);
+  $('root').closest('label').hidden = t === 'acordes' || t === 'aprender';
   render(); window.scrollTo(0, 0);
 }
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => setTab(b.dataset.tab));
@@ -259,7 +273,7 @@ function segmentize(id) {
   const sel = $(id); sel.classList.add('segd');
   const box = document.createElement('div'); box.className = 'seg'; sel.after(box);
   [...sel.options].forEach(o => {
-    const b = document.createElement('button'); b.type = 'button'; b.textContent = o.text.replace(/ \(.*\)/, ''); b.dataset.v = o.value;
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = o.text; b.dataset.v = o.value;
     b.onclick = () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); sync(); };
     box.appendChild(b);
   });

@@ -99,3 +99,10 @@ aside .seg button{background:#0f172a}
 .dd-menu button:hover,.dd-menu button:focus{background:#334155;outline:none}
 .dd-menu button.on{background:#3a2a0a;color:var(--acc);font-weight:700}
 header{position:relative;z-index:10}
+
+/* células e cartões como botões */
+.cell,.vc{font:inherit;color:inherit;border:0;background:none;-webkit-appearance:none;appearance:none}
+.cell{color:#222}
+.vc{background:var(--card);border:3px solid transparent;width:100%}
+.vc.active{border-color:var(--g)}
+.cell:focus-visible,.vc:focus-visible,.seg button:focus-visible,.roots button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
