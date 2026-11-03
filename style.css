@@ -232,3 +232,15 @@ svg .nt{cursor:pointer}
 @media (min-width:761px) and (max-width:899px){ .fpanel{bottom:12px} }
 .link{font:inherit;background:none;border:0;color:var(--acc);font-weight:700;cursor:pointer;padding:8px 4px;text-decoration:underline;text-underline-offset:3px}
 .train{border-color:var(--acc)}
+
+/* guia do aplicativo */
+h2.sec{margin:18px 0 6px;font-size:1.35rem}
+h2.sec:first-child{margin-top:4px}
+details.guide summary{display:flex;align-items:center;gap:10px;padding:4px 0}
+details.guide[open]{border-color:var(--acc)}
+.gi{display:inline-flex;width:34px;height:34px;flex:none;align-items:center;justify-content:center;border-radius:10px;background:var(--acc-soft);color:var(--acc)}
+.gi svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+details.guide ol,details.guide ul{margin:8px 0;padding-left:1.4rem}
+details.guide li{margin:7px 0;line-height:1.5}
+.go-tab{font:inherit;font-weight:700;padding:10px 16px;border-radius:999px;border:2px solid var(--acc);background:var(--acc-bg);color:var(--fg);cursor:pointer}
+.go-tab:hover{filter:brightness(1.08)}

@@ -11,6 +11,7 @@ const state = {
   g: { root: 4, kind: 'pow', tri: 'maior', set: '5,4,3', ext: '7', pos: null, labels: 'notes' },
   p: { key: 0, mode: 'maior', idx: 0, step: 0, pos: null, labels: 'notes', playing: false },
 };
+let tabJump = false; // trocar de tela sempre começa do topo (a proteção de rolagem não segura)
 const NS = 'http://www.w3.org/2000/svg';
 const el = (tag, attrs, parent) => {
   const e = document.createElementNS(NS, tag);
@@ -398,9 +399,10 @@ const TAB_INFO = {
   acordes: ['Acordes', 'Como montar qualquer acorde, com filtros e o sistema CAGED'],
   guitarra: ['Guitarra', 'Power chords, tríades e acordes de guitarrista nas 24 casas'],
   progressoes: ['Progressões', 'As sequências de acordes mais usadas, em qualquer tom'],
-  aprender: ['Aprender', 'Explicações simples, para quem está começando'],
+  aprender: ['Aprender', 'Guia do aplicativo e explicações simples de música'],
 };
 function setTab(t) {
+  tabJump = true;
   stopProg();
   document.body.classList.remove('sheet-open');
   if (!TAB_INFO[t]) t = 'escalas';
@@ -533,10 +535,20 @@ window.addEventListener('scroll', () => $('head').classList.toggle('stuck', scro
 // mantém a tela parada: redesenhar não pode fazer a página pular
 const keepScroll = fn => { const y = scrollY; fn(); if (Math.abs(scrollY - y) > 1) scrollTo(0, y); };
 document.addEventListener('click', e => {
+  tabJump = false;
   if (e.target.closest && e.target.closest('#tabs')) return;
   const y = scrollY;
-  requestAnimationFrame(() => { if (Math.abs(scrollY - y) > 1) scrollTo(0, y); });
+  requestAnimationFrame(() => { if (!tabJump && Math.abs(scrollY - y) > 1) scrollTo(0, y); });
 }, true);
+window.addEventListener('hashchange', () => { const t = location.hash.slice(1); if (t && t !== state.tab) setTab(t); });
+
+// guia: ícones das telas e botões "Abrir a tela"
+const TOP_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>';
+document.querySelectorAll('.gi').forEach(s => {
+  const src = document.querySelector(`#tabs [data-tab="${s.dataset.icon}"] svg`);
+  s.innerHTML = src ? src.outerHTML : TOP_ICON;
+});
+document.querySelectorAll('.go-tab').forEach(b => b.onclick = () => setTab(b.dataset.go));
 
 fillRoots();
 setTab(location.hash.slice(1) || 'escalas');

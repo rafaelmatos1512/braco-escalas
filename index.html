@@ -143,15 +143,77 @@
   </section>
 
   <section id="tab-aprender" hidden>
-    <div class="box"><p>Aqui estão as explicações em linguagem simples. Toque num título para abrir.</p></div>
-    <details open><summary>Como usar este aplicativo</summary>
-      <p>Escolha a nota lá em cima (por exemplo Fá, que no aplicativo aparece como F). A aba <b>Escalas</b> mostra as escalas dessa nota e desenha as notas no braço. A aba <b>Campos</b> mostra os acordes que combinam. A aba <b>Acordes</b> mostra como tocar cada acorde no violão ou guitarra.</p></details>
-    <details><summary>Letra maior e tema claro</summary>
-      <p>Os botões <b>A-</b> e <b>A+</b> no alto da tela diminuem e aumentam a letra. O botão da <b>lua/sol</b> troca entre o tema escuro e o tema claro (fundo branco), que pode ser mais fácil de ler durante o dia. O aplicativo lembra da sua escolha.</p></details>
-    <details><summary>Treinar as notas do braço</summary>
-      <p>Na aba <b>Escalas</b>, em "Nomes das notas", escolha <b>Esconder (treino)</b>. As bolinhas ficam sem o nome: tente dizer qual é a nota e depois toque nela para conferir (ela mostra o nome e toca o som). Marque "Mostrar todas as notas" para treinar o braço inteiro. O botão "Esconder de novo" recomeça.</p></details>
-    <details><summary>Som</summary>
-      <p>Toque em qualquer bolinha do braço para ouvir aquela nota, na altura certa da corda e da casa. Ao tocar num desenho de acorde, o aplicativo toca o acorde como uma batida de violão. Os botões <b>Ouvir</b> tocam a escala ou o acorde, e na aba Progressões o botão <b>Tocar a progressão</b> toca a sequência inteira, mostrando cada acorde no braço. O botão do alto-falante, lá em cima, liga e desliga o som. No iPhone, o som não sai se o botão lateral de silencioso estiver ligado.</p></details>
+    <h2 class="sec">Guia do aplicativo</h2>
+    <div class="box"><p>Onde está cada coisa, tela por tela. Toque num título para abrir ou fechar. O botão laranja no fim de cada parte leva direto para aquela tela.</p></div>
+
+    <details class="guide" open><summary><span class="gi" data-icon="top"></span>No alto da tela (vale para todas)</summary>
+      <ul>
+        <li>O <b>nome grande</b> no alto mostra em qual tela você está.</li>
+        <li><b>Alto-falante</b>: liga e desliga o som.</li>
+        <li><b>Lua / sol</b>: troca entre tela escura e tela clara (fundo branco).</li>
+        <li><b>A-</b> e <b>A+</b>: diminuem e aumentam o tamanho da letra.</li>
+        <li><b>As telas</b> (Escalas, Campos, Acordes, Guitarra, Progressões, Aprender): no computador ficam no alto; no celular ficam <b>embaixo</b>, numa barra com desenhos.</li>
+      </ul></details>
+
+    <details class="guide"><summary><span class="gi" data-icon="escalas"></span>Escalas — as notas de uma escala no braço</summary>
+      <ol>
+        <li>No alto, em <b>Nota</b>, escolha a nota (por exemplo F, que é Fá). O quadrinho <b>Sustenidos (#)</b> troca entre # e b.</li>
+        <li>Em <b>Escala</b>, escolha qual escala ver (Maior, Menor, Pentatônica, Blues…).</li>
+        <li>O <b>braço</b> mostra as notas: laranja é a nota principal (tônica), azul são as outras. <b>Toque numa bolinha</b> para ouvir a nota.</li>
+        <li><b>Ouvir a escala</b>: toca a escala inteira, subindo.</li>
+        <li><b>Casas</b>: 12 ou 24 casas no braço. <b>Mostrar todas as notas</b>: mostra também as notas fora da escala.</li>
+        <li><b>Nomes das notas → Esconder (treino)</b>: as bolinhas ficam sem nome; tente adivinhar e toque para conferir. <b>Esconder de novo</b> recomeça.</li>
+        <li><b>Todas as escalas</b> (embaixo; no computador grande, à direita): cartões com as notas de cada escala. Toque numa nota para ela acender em <b>verde</b> no braço.</li>
+      </ol>
+      <p><button type="button" class="go-tab" data-go="escalas">Abrir a tela Escalas →</button></p></details>
+
+    <details class="guide"><summary><span class="gi" data-icon="campos"></span>Campos — os acordes que combinam</summary>
+      <ol>
+        <li>Escolha a <b>Nota</b> no alto, como em Escalas.</li>
+        <li>Cada cartão mostra os 7 acordes de uma escala, com o número (I, ii, iii…) embaixo.</li>
+        <li><b>Toque num acorde</b>: ele toca e abre um quadro com as notas e os desenhos para tocar. No computador o quadro fica à <b>direita</b>; no celular ele sobe de <b>baixo</b>. O <b>X</b> fecha.</li>
+        <li>No quadro, <b>Ver todas as formas</b> leva para a tela Acordes com aquele acorde.</li>
+      </ol>
+      <p><button type="button" class="go-tab" data-go="campos">Abrir a tela Campos →</button></p></details>
+
+    <details class="guide"><summary><span class="gi" data-icon="acordes"></span>Acordes — como montar qualquer acorde</summary>
+      <ol>
+        <li>Toque na <b>nota do acorde</b> (os 12 botões: C, C#/Db, D…).</li>
+        <li>Em <b>Tipo de acorde</b>, escolha: Maior, Menor, com sétima (7), etc.</li>
+        <li>Os <b>filtros</b> (à esquerda no computador, em cima no celular) ajudam a achar uma forma boa: parte do braço, se usa cordas soltas, se usa pestana, qual nota fica embaixo e quantas cordas tocam.</li>
+        <li><b>Sistema CAGED</b>: o mesmo acorde em 5 lugares do braço (só para maior e menor).</li>
+        <li><b>Toque num desenho</b>: ele toca, mostra "como tocar" corda por corda e acende no braço lá embaixo. Toque de novo para voltar a ver todas as notas.</li>
+        <li><b>Ouvir o acorde</b>: toca o acorde.</li>
+      </ol>
+      <p><button type="button" class="go-tab" data-go="acordes">Abrir a tela Acordes →</button></p></details>
+
+    <details class="guide"><summary><span class="gi" data-icon="guitarra"></span>Guitarra — acordes de guitarrista</summary>
+      <ol>
+        <li>Em <b>Tipo</b>, escolha: <b>Power chord</b> (acorde do rock), <b>Tríades</b> (acorde em 3 cordas) ou <b>Acordes com tensão</b> (7, 9, add9…).</li>
+        <li>Toque na <b>nota do acorde</b>.</li>
+        <li>Os desenhos aparecem em ordem pelo braço, até a casa 24. <b>Toque num</b> para ouvir e ver só ele no braço.</li>
+        <li><b>No braço mostrar → Intervalos</b>: troca o nome das notas por 1, 3, 5, b7 (o "papel" de cada nota no acorde).</li>
+      </ol>
+      <p><button type="button" class="go-tab" data-go="guitarra">Abrir a tela Guitarra →</button></p></details>
+
+    <details class="guide"><summary><span class="gi" data-icon="progressoes"></span>Progressões — sequências de acordes das músicas</summary>
+      <ol>
+        <li>Toque no <b>tom da música</b> (os 12 botões) e escolha <b>Maior</b> ou <b>Menor</b>.</li>
+        <li>Toque numa <b>progressão</b> da lista (por exemplo I – IV – V).</li>
+        <li>Aparecem os acordes da sequência. <b>Toque num acorde</b> para ouvir e ver onde ele fica no braço.</li>
+        <li><b>Tocar a progressão</b>: toca a sequência inteira, acendendo cada acorde. <b>Parar</b> interrompe.</li>
+      </ol>
+      <p><button type="button" class="go-tab" data-go="progressoes">Abrir a tela Progressões →</button></p></details>
+
+    <details class="guide"><summary><span class="gi" data-icon="aprender"></span>Dicas</summary>
+      <ul>
+        <li>O aplicativo funciona <b>sem internet</b> depois de aberto uma vez. Com internet, ele se atualiza sozinho ao abrir.</li>
+        <li>Ele lembra das suas escolhas: tema, tamanho da letra, som e a última tela aberta.</li>
+        <li>No iPhone, se não sair som, confira a chave lateral de silencioso.</li>
+      </ul></details>
+
+    <h2 class="sec">Aprender música</h2>
+    <div class="box"><p>Explicações em linguagem simples sobre notas, escalas e acordes. Toque num título para abrir.</p></div>
     <details><summary>Nomes das notas: letras e Dó Ré Mi</summary>
       <p>No aplicativo as notas aparecem como letras, que é o jeito das cifras: C = Dó, D = Ré, E = Mi, F = Fá, G = Sol, A = Lá, B = Si.</p></details>
     <details><summary>Sustenido (#) e bemol (b)</summary>
