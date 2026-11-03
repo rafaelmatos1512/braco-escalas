@@ -66,10 +66,26 @@ function bestSpelling(rootPc, pcs, letterSteps, useSharps) {
 }
 
 export function spelledScale(root, name, useSharps) {
-  return bestSpelling(root, scaleNotes(root, name), scaleLetters(name), useSharps);
+  const sp = bestSpelling(root, scaleNotes(root, name), scaleLetters(name), useSharps);
+  if (name === 'Blues') {
+    // a "blue note" pode ser escrita como b5 (Gb em C) ou #4 (F# em C): fica a que tiver menos acidentes (Bb blues usa E, não Fb)
+    const alt = spellNote(scaleNotes(root, name)[3], LETTERS.indexOf(sp[0][0]) + 3);
+    if (alt.length < sp[3].length) sp[3] = alt;
+  }
+  return sp;
 }
 
 const chordLetters = (iv, letters) => letters || iv.map(i => INTERVAL_LETTER[i % 12]);
+// graus de uma escala já escrita (no blues, a blue note vira #IV quando é escrita como 4ª aumentada)
+export function scaleDegreeLabels(root, name, useSharps) {
+  const lb = degreeLabels(name).slice();
+  if (name === 'Blues') {
+    const sp = spelledScale(root, name, useSharps);
+    if (sp[3][0] === sp[2][0]) lb[3] = '#IV';
+  }
+  return lb;
+}
+
 export function spelledChord(rootPc, iv, useSharps, letters) {
   return bestSpelling(rootPc, iv.map(i => (rootPc + i) % 12), chordLetters(iv, letters), useSharps);
 }

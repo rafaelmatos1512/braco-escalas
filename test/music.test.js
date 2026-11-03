@@ -27,7 +27,7 @@ test('campos harmônicos batem com o app de referência', () => {
   assert.equal(harmonicField(0, 'Pentatônica Maior', false), null);
 });
 
-import { spelledScale, spelledChord } from '../music.js';
+import { spelledScale, spelledChord, scaleDegreeLabels } from '../music.js';
 
 test('grafia correta: cada escala usa cada letra uma vez', () => {
   assert.equal(spelledScale(5, 'Maior', true).join(' '), 'F G A Bb C D E');
@@ -40,6 +40,8 @@ test('grafia correta: cada escala usa cada letra uma vez', () => {
   assert.equal(spelledScale(8, 'Menor Harmônica', true).at(-1), 'F##');
   assert.equal(spelledScale(9, 'Pentatônica Menor', true).join(' '), 'A C D E G');
   assert.equal(spelledScale(9, 'Blues', true).join(' '), 'A C D Eb E G');
+  assert.equal(spelledScale(10, 'Blues', false).join(' '), 'Bb Db Eb E F Ab'); // blue note E, não Fb
+  assert.equal(spelledScale(5, 'Blues', false).join(' '), 'F Ab Bb B C Eb');
 });
 
 test('campo harmônico de F maior com Bb', () => {
@@ -52,4 +54,9 @@ test('notas dos acordes escritas certo', () => {
   assert.equal(spelledChord(0, [0, 4, 8], true).join(' '), 'C E G#');
   assert.equal(spelledChord(7, [0, 4, 7, 10], true).join(' '), 'G B D F');
   assert.equal(spelledChord(3, [0, 3, 7, 10], false).join(' '), 'Eb Gb Bb Db'); // empate: segue o botão
+});
+
+test('grau da blue note acompanha a grafia', () => {
+  assert.equal(scaleDegreeLabels(10, 'Blues', false)[3], '#IV'); // Bb blues: E
+  assert.equal(scaleDegreeLabels(0, 'Blues', false)[3], 'bV');   // C blues: Gb
 });

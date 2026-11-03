@@ -10,30 +10,38 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Braço e Escalas">
 <meta name="description" content="Notas, escalas, campo harmônico e acordes no braço do violão e da guitarra, com explicações simples.">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')==='light'?'light':'dark'}catch(e){}</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
+<header id="head">
  <div class="wrap">
   <div class="top">
-    <h1>Braço e Escalas</h1>
-    <div class="font"><button id="fminus" aria-label="Diminuir letra">A-</button><button id="fplus" aria-label="Aumentar letra">A+</button></div>
+    <div class="brand">
+      <img src="icon.svg" alt="" width="40" height="40">
+      <div class="titles">
+        <small>Braço e Escalas</small>
+        <h1 id="pageTitle">Escalas</h1>
+      </div>
+    </div>
+    <div class="font"><button id="soundBtn" aria-label="Desligar o som"><svg class="on-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg><svg class="off-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button><button id="themeBtn" title="Tema claro / escuro" aria-label="Mudar para tema claro"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12H4M20 12h2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button><button id="fminus" aria-label="Diminuir letra">A-</button><button id="fplus" aria-label="Aumentar letra">A+</button></div>
   </div>
-  <div class="bar">
-    <label>Nota <select id="root"></select></label>
-    <label class="switch" title="Desligado mostra bemóis (b)"><input type="checkbox" id="sharps" checked> Sustenidos (#)<small></small></label>
-  </div>
-  <nav id="tabs">
-    <button data-tab="escalas" class="on">Escalas</button>
-    <button data-tab="campos">Campos</button>
-    <button data-tab="acordes">Acordes</button>
-    <button data-tab="guitarra">Guitarra</button>
-    <button data-tab="progressoes">Progressões</button>
-    <button data-tab="aprender">Aprender</button>
+  <p id="pageSub" class="sub"></p>
+  <nav id="tabs" aria-label="Seções">
+    <button data-tab="escalas" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19h4v-4h4v-4h4V7h4V3"/></svg><span>Escalas</span></button>
+    <button data-tab="campos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="16" rx="1.5"/><rect x="17" y="4" width="4" height="16" rx="1.5"/></svg><span>Campos</span></button>
+    <button data-tab="acordes"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9.7 3v18M14.3 3v18M5 9h14M5 15h14"/><circle cx="9.7" cy="12" r="1.6" fill="currentColor"/><circle cx="14.3" cy="18" r="1.6" fill="currentColor"/></svg><span>Acordes</span></button>
+    <button data-tab="guitarra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 10l6-6M18 2l4 4"/><path d="M14 10a5 5 0 0 0-7.6 1.2 3 3 0 0 0-3.9 3.9 4.5 4.5 0 0 0 6.4 6.4 3 3 0 0 0 3.9-3.9A5 5 0 0 0 14 10z"/><circle cx="9.5" cy="14.5" r="1.4"/></svg><span>Guitarra</span></button>
+    <button data-tab="progressoes"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="9" width="5" height="6" rx="1.2"/><rect x="9.5" y="9" width="5" height="6" rx="1.2"/><rect x="17" y="9" width="5" height="6" rx="1.2"/><path d="M7 12h2.5M14.5 12H17"/></svg><span>Progressões</span></button>
+    <button data-tab="aprender"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg><span>Aprender</span></button>
   </nav>
  </div>
 </header>
 <main>
+  <div class="bar">
+    <label>Nota <select id="root"></select></label>
+    <label class="switch" title="Desligado mostra bemóis (b)"><input type="checkbox" id="sharps" checked> Sustenidos (#)</label>
+  </div>
   <section id="tab-escalas">
     <div id="detail">
       <h2 id="title"></h2>
@@ -65,10 +73,10 @@
         <label>Tipo de acorde <select id="ctype"></select></label>
         <label>Região do braço
           <select id="region"><option value="all">Qualquer</option><option value="1">Início (1–4)</option><option value="2">Meio (5–8)</option><option value="3">Agudo (9–12)</option><option value="4">Mais agudo (13+)</option></select></label>
-        <label>Cordas soltas
-          <select id="copen"><option value="any">Tanto faz</option><option value="with">Com cordas soltas</option><option value="without">Sem cordas soltas</option></select></label>
-        <label>Pestana
-          <select id="cbarre"><option value="any">Tanto faz</option><option value="without">Sem pestana</option><option value="with">Só com pestana</option></select></label>
+        <label>Usar cordas soltas?
+          <select id="copen"><option value="any">Sim</option><option value="without">Não</option></select></label>
+        <label>Usar pestana?
+          <select id="cbarre"><option value="any">Sim</option><option value="without">Não</option></select></label>
         <label>Nota mais grave
           <select id="cbass"><option value="root">Nota do acorde</option><option value="any">Qualquer (inversão)</option></select></label>
         <label>Cordas tocadas
@@ -133,6 +141,10 @@
     <div class="box"><p>Aqui estão as explicações em linguagem simples. Toque num título para abrir.</p></div>
     <details open><summary>Como usar este aplicativo</summary>
       <p>Escolha a nota lá em cima (por exemplo Fá, que no aplicativo aparece como F). A aba <b>Escalas</b> mostra as escalas dessa nota e desenha as notas no braço. A aba <b>Campos</b> mostra os acordes que combinam. A aba <b>Acordes</b> mostra como tocar cada acorde no violão ou guitarra.</p></details>
+    <details><summary>Letra maior e tema claro</summary>
+      <p>Os botões <b>A-</b> e <b>A+</b> no alto da tela diminuem e aumentam a letra. O botão da <b>lua/sol</b> troca entre o tema escuro e o tema claro (fundo branco), que pode ser mais fácil de ler durante o dia. O aplicativo lembra da sua escolha.</p></details>
+    <details><summary>Som</summary>
+      <p>Toque em qualquer bolinha do braço para ouvir aquela nota, na altura certa da corda e da casa. Ao tocar num desenho de acorde, o aplicativo toca o acorde como uma batida de violão. Os botões <b>Ouvir</b> tocam a escala ou o acorde, e na aba Progressões o botão <b>Tocar a progressão</b> toca a sequência inteira, mostrando cada acorde no braço. O botão do alto-falante, lá em cima, liga e desliga o som. No iPhone, o som não sai se o botão lateral de silencioso estiver ligado.</p></details>
     <details><summary>Nomes das notas: letras e Dó Ré Mi</summary>
       <p>No aplicativo as notas aparecem como letras, que é o jeito das cifras: C = Dó, D = Ré, E = Mi, F = Fá, G = Sol, A = Lá, B = Si.</p></details>
     <details><summary>Sustenido (#) e bemol (b)</summary>
