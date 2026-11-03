@@ -32,9 +32,54 @@ export const degreeLabels = name => LABELS[name] || ['I','II','III','IV','V','VI
 
 const ROMAN = ['I','II','III','IV','V','VI','VII'];
 
+/* ---------- grafia correta (cada escala usa cada letra uma vez) ---------- */
+const LETTERS = ['C','D','E','F','G','A','B'];
+const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
+// em que letra (contando a partir da tônica) cai cada nota da escala
+const SCALE_LETTERS = {
+  'Pentatônica Maior': [0, 1, 2, 4, 5],
+  'Pentatônica Menor': [0, 2, 3, 4, 6],
+  'Blues': [0, 2, 3, 4, 4, 6],
+};
+const scaleLetters = name => SCALE_LETTERS[name] || [0, 1, 2, 3, 4, 5, 6];
+// intervalo do acorde (semitons) -> distância em letras: 3ª, 5ª, 7ª etc.
+const INTERVAL_LETTER = { 0: 0, 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 6: 4, 7: 4, 8: 4, 9: 5, 10: 6, 11: 6 };
+
+// escreve a nota `pc` usando a letra `letterIdx` (0 = C ... 6 = B)
+export function spellNote(pc, letterIdx) {
+  const li = ((letterIdx % 7) + 7) % 7;
+  const diff = ((pc - LETTER_PC[li] + 18) % 12) - 6;
+  return LETTERS[li] + (diff > 0 ? '#'.repeat(diff) : 'b'.repeat(-diff));
+}
+const accidentals = names => names.reduce((n, x) => n + x.length - 1, 0);
+
+// testa a tônica escrita com # e com b e fica com a que dá menos acidentes; empate = preferência do usuário
+function bestSpelling(rootPc, pcs, letterSteps, useSharps) {
+  const build = rootName => {
+    const li = LETTERS.indexOf(rootName[0]);
+    return pcs.map((pc, i) => spellNote(pc, li + letterSteps[i]));
+  };
+  const a = build(SHARP[rootPc]), b = build(FLAT[rootPc]);
+  if (SHARP[rootPc] === FLAT[rootPc]) return a;
+  const da = accidentals(a), db = accidentals(b);
+  return da < db ? a : db < da ? b : (useSharps ? a : b);
+}
+
+export function spelledScale(root, name, useSharps) {
+  return bestSpelling(root, scaleNotes(root, name), scaleLetters(name), useSharps);
+}
+
+export function spelledChord(rootPc, iv, useSharps) {
+  return bestSpelling(rootPc, iv.map(i => (rootPc + i) % 12), iv.map(i => INTERVAL_LETTER[i % 12]), useSharps);
+}
+
+// mapa nota (0-11) -> nome escrito, para desenhar no braço
+export const nameMap = (pcs, names) => new Map(pcs.map((pc, i) => [pc, names[i]]));
+
 export function harmonicField(root, name, useSharps) {
   const n = scaleNotes(root, name);
   if (n.length !== 7) return null;
+  const sp = spelledScale(root, name, useSharps);
   return n.map((r, i) => {
     const third = (n[(i + 2) % 7] - r + 12) % 12;
     const fifth = (n[(i + 4) % 7] - r + 12) % 12;
@@ -43,15 +88,14 @@ export function harmonicField(root, name, useSharps) {
     else if (third === 3 && fifth === 6) { suffix = '°'; roman = roman.toLowerCase(); }
     else if (third === 4 && fifth === 8) { suffix = '+'; }
     const type = suffix === 'm' ? 'menor' : suffix === '°' ? 'dim' : suffix === '+' ? 'aug' : 'maior';
-    return { chord: noteName(r, useSharps) + suffix, type, roman, notes: [r, n[(i + 2) % 7], n[(i + 4) % 7]] };
+    return { chord: sp[i] + suffix, type, roman, notes: [r, n[(i + 2) % 7], n[(i + 4) % 7]] };
   });
 }
 
 const PT = { C: 'Dó', D: 'Ré', E: 'Mi', F: 'Fá', G: 'Sol', A: 'Lá', B: 'Si' };
-export function ptName(pc, useSharps) {
-  const n = noteName(pc, useSharps);
-  return PT[n[0]] + (n[1] === '#' ? ' sustenido' : n[1] === 'b' ? ' bemol' : '');
-}
+const ACC_PT = { '#': ' sustenido', '##': ' dobrado sustenido', 'b': ' bemol', 'bb': ' dobrado bemol' };
+export const ptOf = name => PT[name[0]] + (ACC_PT[name.slice(1)] || '');
+export const ptName = (pc, useSharps) => ptOf(noteName(pc, useSharps));
 
 export const CHORD_TYPES = {
   maior: { label: 'Maior', suffix: '', iv: [0,4,7],

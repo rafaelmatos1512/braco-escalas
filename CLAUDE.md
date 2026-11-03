@@ -25,4 +25,7 @@ PWA estático (HTML/CSS/JS puro, sem build, sem dependências) que mostra notas,
 - Seções escondidas usam o atributo `hidden`; há `[hidden]{display:none!important}` porque media queries com `display:grid` sobrescreviam.
 
 ## Limitações conhecidas
-Ver `docs/ROADMAP.md`. Principal: toggle # / b é global (F maior mostra A# em vez de Bb).
+Ver `docs/ROADMAP.md`.
+
+## Grafia das notas
+Escalas, campos e acordes usam `spelledScale`/`spelledChord` (`music.js`): cada letra uma vez, tônica escrita com # ou b conforme der menos acidentes; empate segue o botão Sustenidos. O botão também vale para notas fora da escala. Pode gerar `##`/`bb` em escalas raras (correto).

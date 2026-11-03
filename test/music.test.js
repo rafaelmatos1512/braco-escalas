@@ -26,3 +26,30 @@ test('campos harmônicos batem com o app de referência', () => {
   assert.equal(f('Menor Melódica'), 'Cm Dm Eb+ F G A° B°');
   assert.equal(harmonicField(0, 'Pentatônica Maior', false), null);
 });
+
+import { spelledScale, spelledChord } from '../music.js';
+
+test('grafia correta: cada escala usa cada letra uma vez', () => {
+  assert.equal(spelledScale(5, 'Maior', true).join(' '), 'F G A Bb C D E');
+  assert.equal(spelledScale(2, 'Maior', false).join(' '), 'D E F# G A B C#');
+  assert.equal(spelledScale(10, 'Maior', true).join(' '), 'Bb C D Eb F G A');      // A# maior vira Bb
+  assert.equal(spelledScale(1, 'Menor', false).join(' '), 'C# D# E F# G# A B');    // Db menor vira C#
+  assert.equal(spelledScale(6, 'Maior', true).join(' '), 'F# G# A# B C# D# E#');   // empate: segue o botão
+  assert.equal(spelledScale(6, 'Maior', false).join(' '), 'Gb Ab Bb Cb Db Eb F');
+  assert.equal(spelledScale(9, 'Menor Harmônica', true).join(' '), 'A B C D E F G#');
+  assert.equal(spelledScale(8, 'Menor Harmônica', true).at(-1), 'F##');
+  assert.equal(spelledScale(9, 'Pentatônica Menor', true).join(' '), 'A C D E G');
+  assert.equal(spelledScale(9, 'Blues', true).join(' '), 'A C D Eb E G');
+});
+
+test('campo harmônico de F maior com Bb', () => {
+  assert.equal(harmonicField(5, 'Maior', true).map(c => c.chord).join(' '), 'F Gm Am Bb C Dm E°');
+});
+
+test('notas dos acordes escritas certo', () => {
+  assert.equal(spelledChord(10, [0, 4, 7], true).join(' '), 'Bb D F');
+  assert.equal(spelledChord(11, [0, 3, 6], true).join(' '), 'B D F');
+  assert.equal(spelledChord(0, [0, 4, 8], true).join(' '), 'C E G#');
+  assert.equal(spelledChord(7, [0, 4, 7, 10], true).join(' '), 'G B D F');
+  assert.equal(spelledChord(3, [0, 3, 7, 10], false).join(' '), 'Eb Gb Bb Db'); // empate: segue o botão
+});

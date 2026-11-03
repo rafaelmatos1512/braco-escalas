@@ -6,9 +6,9 @@
 - Campo harmônico das 5 escalas de 7 notas (validado contra o app "Escalas e Campo Harmônico").
 - Acordes: 11 tipos, gerador automático, filtros, CAGED (maior e menor).
 - Aba Aprender, ajuste de tamanho de letra, nomes duplos (C# / Db).
+- Grafia correta por escala e por acorde (F maior com Bb).
 
 ## Próximos passos
-- [ ] Grafia correta por escala (F maior → Bb, não A#). Hoje o toggle # / b é global.
 - [ ] Revisar com o usuário as formas CAGED de G e de C menor (variam por escola).
 - [ ] Posições/desenhos da pentatônica (5 boxes) no braço.
 - [ ] Som: tocar a nota/acorde ao tocar na tela (Web Audio).

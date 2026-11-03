@@ -1,4 +1,4 @@
-import { SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, TUNING, noteName, noteAt, ptName,
+import { SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, TUNING, noteName, noteAt, ptName, ptOf, spelledScale, spelledChord, nameMap,
   scaleNotes, harmonicField, degreeLabels } from './music.js';
 import { generateVoicings, filterVoicings, cagedShapes, hasCaged } from './chords.js';
 
@@ -59,7 +59,7 @@ function drawRow(host, from, to, o) {
       const cx = f === 0 ? LEFT - 28 : LEFT + (f - from + 0.5) * FW;
       el('circle', { cx, cy: y, r: 15, fill, opacity: op }, svg);
       el('text', { x: cx, y: y + 5, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 700,
-        fill: on ? '#0f172a' : '#94a3b8' }, svg).textContent = nn(nt);
+        fill: on ? '#0f172a' : '#94a3b8' }, svg).textContent = (o.names && o.names.get(nt)) || nn(nt);
     }
   }
 }
@@ -71,7 +71,7 @@ function drawBoard(host, frets, o) {
 }
 
 /* ---------- diagrama de acorde ---------- */
-function chordSvg(v, rootPc) {
+function chordSvg(v, rootPc, names) {
   const X0 = 40, DX = 18, TOP = 34, DY = 24, W = 150, H = 176;
   const wrap = document.createElement('div');
   const svg = el('svg', { viewBox: `0 0 ${W} ${H}` }, wrap);
@@ -97,7 +97,7 @@ function chordSvg(v, rootPc) {
     const nt = noteAt(s, f), isRoot = nt === rootPc;
     const cx = X0 + s * DX, cy = TOP + (f - base) * DY + DY / 2;
     el('circle', { cx, cy, r: 8.5, fill: isRoot ? '#f59e0b' : '#38bdf8' }, svg);
-    el('text', { x: cx, y: cy + 3.5, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 700, fill: '#0f172a' }, svg).textContent = nn(nt);
+    el('text', { x: cx, y: cy + 3.5, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 700, fill: '#0f172a' }, svg).textContent = (names && names.get(nt)) || nn(nt);
   });
   return wrap.innerHTML;
 }
@@ -108,27 +108,28 @@ const formulaText = name => SCALES[name].map(i => STEP_NAME[i]).join(' · ');
 function renderEscalas() {
   $('scale').value = state.scale;
   const notes = scaleNotes(state.root, state.scale);
-  $('title').textContent = `${dual(state.root)} ${state.scale}  (${ptName(state.root, state.sharps)})`;
+  const sp = spelledScale(state.root, state.scale, state.sharps), names = nameMap(notes, sp);
+  $('title').textContent = `${sp[0]} ${state.scale}  (${ptOf(sp[0])})`;
   $('scaleInfo').innerHTML =
-    `<p>Notas: <b>${notes.map(nn).join(' - ')}</b></p>` +
+    `<p>Notas: <b>${sp.join(' - ')}</b></p>` +
     `<p>${SCALE_INFO[state.scale]}</p>` +
     `<p>Receita (de uma nota para a próxima): ${formulaText(state.scale)}. Um tom são 2 casas, um semitom é 1 casa.</p>`;
   drawBoard($('board'), state.frets, {
-    inScale: new Set(notes), hl: state.sel ? state.sel.notes : null, rootPc: state.root, all: state.all });
+    inScale: new Set(notes), names, hl: state.sel ? state.sel.notes : null, rootPc: state.root, all: state.all });
 
   const labels = degreeLabels(state.scale);
   if (state.sel && state.sel.scale === state.scale) {
-    const i = state.sel.idx, n = notes[i];
+    const i = state.sel.idx;
     $('selInfo').hidden = false;
-    $('selInfo').innerHTML = `<p><b>${nn(n)}</b> (${ptName(n, state.sharps)}) é a ${ORD[i]} nota da escala, o grau ${labels[i]}. ` +
+    $('selInfo').innerHTML = `<p><b>${sp[i]}</b> (${ptOf(sp[i])}) é a ${ORD[i]} nota da escala, o grau ${labels[i]}. ` +
       (i === 0 ? 'É a tônica, a "nota de casa" onde a escala começa e termina.' : 'Aparece em verde no braço, em todas as posições onde ela existe.') + '</p>';
   } else $('selInfo').hidden = true;
 
   $('scaleCards').innerHTML = Object.keys(SCALES).map(name => {
-    const ns = scaleNotes(state.root, name), lb = degreeLabels(name);
+    const ns = spelledScale(state.root, name, state.sharps), lb = degreeLabels(name);
     const cells = ns.map((n, i) => {
       const on = state.sel && state.sel.scale === name && state.sel.idx === i;
-      return `<button type="button" class="cell ${on ? 'on' : ''} ${i === 0 ? 'root' : ''}" data-s="${name}" data-i="${i}"><b>${nn(n)}</b><small>${lb[i]}</small></button>`;
+      return `<button type="button" class="cell ${on ? 'on' : ''} ${i === 0 ? 'root' : ''}" data-s="${name}" data-i="${i}"><b>${n}</b><small>${lb[i]}</small></button>`;
     }).join('');
     return `<div class="scard ${name === state.scale ? 'active' : ''}"><div class="name">${name}</div><div class="row">${cells}</div></div>`;
   }).join('');
@@ -149,7 +150,7 @@ function renderCampos() {
     if (!f) return '';
     const cells = f.map((c, i) =>
       `<button type="button" class="cell ${i === 0 ? 'root' : ''}" data-i="${i}" data-s="${name}"><b>${c.chord}</b><small>${c.roman}</small></button>`).join('');
-    return `<div class="scard"><div class="name">${nn(state.root)} ${name}</div><div class="row">${cells}</div></div>`;
+    return `<div class="scard"><div class="name">${f[0].chord.replace(/m$/, '')} ${name}</div><div class="row">${cells}</div></div>`;
   }).join('');
   document.querySelectorAll('#fieldCards .cell').forEach(c => c.onclick = () => {
     const f = harmonicField(state.root, c.dataset.s, state.sharps)[+c.dataset.i];
@@ -171,6 +172,7 @@ function renderAcordes() {
   const all = memo[key] || (memo[key] = generateVoicings(rootPc, t.iv));
   const filtered = filterVoicings(all, state.cf), list = filtered.slice(0, MAX_SHOW);
   const pcs = t.iv.map(i => (rootPc + i) % 12);
+  const cn = spelledChord(rootPc, t.iv, state.sharps), names = nameMap(pcs, cn);
   const cg = hasCaged(state.ctype), caged = cg ? cagedShapes(rootPc, state.ctype) : [];
 
   $('chordRoots').innerHTML = Array.from({ length: 12 }, (_, i) =>
@@ -183,11 +185,11 @@ function renderAcordes() {
       ? `Mostrando as ${MAX_SHOW} formas mais fáceis (de ${filtered.length} encontradas). Toque numa para ver os detalhes.`
       : `${filtered.length} forma${filtered.length === 1 ? '' : 's'} de tocar, das mais fáceis para as mais difíceis. Toque numa para ver os detalhes.`;
   $('chordInfo').innerHTML =
-    `<p><b>${dual(rootPc, t.suffix)}</b> — ${ptName(rootPc, state.sharps)} ${t.label.toLowerCase()}</p>` +
-    `<p>Notas do acorde: <b>${pcs.map(nn).join(' - ')}</b></p><p>${t.desc}</p><p>${count}</p>`;
+    `<p><b>${cn[0]}${t.suffix}</b> — ${ptOf(cn[0])} ${t.label.toLowerCase()}</p>` +
+    `<p>Notas do acorde: <b>${cn.join(' - ')}</b></p><p>${t.desc}</p><p>${count}</p>`;
 
   const card = (v, id, head, foot) =>
-    `<button type="button" class="vc ${state.cvoice === id ? 'active' : ''}" data-id="${id}">${head}${chordSvg(v, rootPc)}<small>${foot}</small>` +
+    `<button type="button" class="vc ${state.cvoice === id ? 'active' : ''}" data-id="${id}">${head}${chordSvg(v, rootPc, names)}<small>${foot}</small>` +
     (v.barre ? '<span class="tag">pestana</span>' : '') + (v.hasOpen ? '<span class="tag">cordas soltas</span>' : '') + '</button>';
   const where = v => v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta';
 
@@ -205,11 +207,11 @@ function renderAcordes() {
   $('voiceInfo').hidden = $('board2wrap').hidden = false;
   if (v) {
     $('voiceInfo').innerHTML = `<p><b>Como tocar${v.shape ? ` (forma de ${v.shape})` : ''}:</b></p><ol class="str">` + v.frets.map((f, s) =>
-      `<li>${STRING_NAMES[s]}: ${f < 0 ? 'não tocar' : f === 0 ? `solta (${nn(noteAt(s, 0))})` : `casa ${f} (${nn(noteAt(s, f))})`}</li>`).join('') + '</ol>' +
+      `<li>${STRING_NAMES[s]}: ${f < 0 ? 'não tocar' : f === 0 ? `solta (${names.get(noteAt(s, 0))})` : `casa ${f} (${names.get(noteAt(s, f))})`}</li>`).join('') + '</ol>' +
       (v.barre ? `<p>Use a pestana na casa ${v.minF} (um dedo apoiado sobre várias cordas).</p>` : '') +
       '<p>No braço abaixo aparece só esta forma. Toque nela de novo para ver todas as posições.</p>';
   } else $('voiceInfo').innerHTML = '<p>Abaixo: todas as posições das notas deste acorde no braço. Toque numa forma acima para ver só ela.</p>';
-  drawBoard($('board2'), v ? (v.maxF > 12 ? 24 : 12) : state.frets2, { inScale: new Set(pcs), rootPc, all: false, exact: v ? v.frets : null });
+  drawBoard($('board2'), v ? (v.maxF > 12 ? 24 : 12) : state.frets2, { inScale: new Set(pcs), names, rootPc, all: false, exact: v ? v.frets : null });
 }
 function fillChordSelects() {
   if (!$('ctype').options.length) Object.entries(CHORD_TYPES).forEach(([k, t]) => $('ctype').add(new Option(t.label, k)));
