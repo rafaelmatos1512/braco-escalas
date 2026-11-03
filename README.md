@@ -9,6 +9,15 @@ Aplicativo web (instalável no celular) para estudar o braço do violão e da gu
 
 Funciona offline, sem anúncios, sem cadastro e sem dependências.
 
+## Usar / instalar
+
+Abra **https://rafaelmatos1512.github.io/braco-escalas/** e instale:
+
+- **Windows (Edge ou Chrome):** clique no ícone de instalar na barra de endereço (um monitor com seta, ou "Aplicativo disponível") → **Instalar**. Ele aparece no menu Iniciar e funciona sem internet.
+  - No Edge, se o ícone não aparecer: menu **⋯** → **Aplicativos** → **Instalar este site como um aplicativo**.
+- **Mac (Safari):** menu **Arquivo → Adicionar ao Dock**. No Chrome: ícone de instalar na barra de endereço.
+- **Celular:** Compartilhar → **Adicionar à Tela de Início**.
+
 ## Rodar localmente
 
 ```bash

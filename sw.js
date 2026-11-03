@@ -1,6 +1,6 @@
 // Busca sempre a versão nova; usa o cache só sem internet.
-const C = 'braco-v4';
-const FILES = ['./', 'index.html', 'style.css', 'app.js', 'music.js', 'chords.js', 'icon.svg', 'manifest.webmanifest'];
+const C = 'braco-v5';
+const FILES = ['./', 'index.html', 'style.css', 'app.js', 'music.js', 'chords.js', 'icon.svg', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(C).then(c => c.addAll(FILES)).catch(() => {}));
