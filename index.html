@@ -24,7 +24,7 @@
         <h1 id="pageTitle">Escalas</h1>
       </div>
     </div>
-    <div class="font"><button id="helpBtn" class="help" aria-label="Ajuda: está com dúvida?" title="Está com dúvida?"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4.1"/><circle cx="12" cy="17.6" r=".6" fill="currentColor"/></svg></button><button id="soundBtn" aria-label="Desligar o som"><svg class="on-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg><svg class="off-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button><button id="themeBtn" title="Tema claro / escuro" aria-label="Mudar para tema claro"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12H4M20 12h2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button><button id="fminus" aria-label="Diminuir letra">A-</button><button id="fplus" aria-label="Aumentar letra">A+</button></div>
+    <div class="font"><button id="helpBtn" class="help" aria-label="Ajuda: está com dúvida?" title="Está com dúvida?"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4.1"/><circle cx="12" cy="17.6" r=".6" fill="currentColor"/></svg></button><button id="tunerBtn" aria-label="Afinador" title="Afinador"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 2.5v8a3.5 3.5 0 0 0 7 0v-8"/><path d="M12 14v7.5"/></svg></button><button id="soundBtn" aria-label="Desligar o som"><svg class="on-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg><svg class="off-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button><button id="themeBtn" title="Tema claro / escuro" aria-label="Mudar para tema claro"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12H4M20 12h2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button><button id="fminus" aria-label="Diminuir letra">A-</button><button id="fplus" aria-label="Aumentar letra">A+</button></div>
   </div>
   <p id="pageSub" class="sub"></p>
   <nav id="tabs" aria-label="Seções">
@@ -175,6 +175,7 @@
     <details class="guide" open><summary><span class="gi" data-icon="top"></span>No alto da tela (vale para todas)</summary>
       <ul>
         <li>O <b>nome grande</b> no alto mostra em qual tela você está.</li>
+        <li><b>Diapasão</b> (o garfinho): abre o <b>afinador</b> do violão e da guitarra.</li>
         <li><b>Alto-falante</b>: liga e desliga o som.</li>
         <li><b>Lua / sol</b>: troca entre tela escura e tela clara (fundo branco).</li>
         <li><b>A-</b> e <b>A+</b>: diminuem e aumentam o tamanho da letra.</li>
@@ -231,6 +232,20 @@
       </ol>
       <p><button type="button" class="go-tab" data-go="progressoes">Abrir a tela Progressões →</button></p></details>
 
+    <details class="guide"><summary><span class="gi" data-icon="tuner"></span>Afinador — como afinar o violão ou a guitarra</summary>
+      <p>O afinador fica no botão do <b>garfinho</b> (diapasão), no alto da tela. Serve para violão e guitarra na afinação normal: 6ª Mi, 5ª Lá, 4ª Ré, 3ª Sol, 2ª Si, 1ª Mi.</p>
+      <p><b>Com microfone</b> (notebook, celular ou computador com microfone):</p>
+      <ol>
+        <li>Toque em <b>Ligar o microfone</b>. Na primeira vez o navegador pergunta se pode usar o microfone: toque em <b>Permitir</b>.</li>
+        <li>Toque uma corda <b>solta</b>, sem apertar casa, e deixe soar.</li>
+        <li>O afinador mostra qual corda ouviu e um <b>ponteiro</b>: à esquerda está baixa, à direita está alta, no meio está certa.</li>
+        <li>Se estiver <b>baixa</b>, aperte a tarraxa devagar. Se estiver <b>alta</b>, afrouxe. Toque a corda de novo e confira.</li>
+        <li>Quando ficar <b>verde</b> e aparecer "Afinada!", passe para a próxima corda.</li>
+      </ol>
+      <p><b>Sem microfone</b> (afinar de ouvido): toque no botão da corda (por exemplo "5ª Lá"). O aplicativo toca o som certo. Toque a mesma corda no violão e gire a tarraxa até os dois sons ficarem iguais.</p>
+      <p>Dica: afine num lugar silencioso. Com barulho, o ponteiro fica tremendo.</p>
+      <p><button type="button" class="link" data-open-tuner>Abrir o afinador →</button></p></details>
+
     <details class="guide"><summary><span class="gi" data-icon="escalas"></span>Modo treino — como treinar as notas do braço</summary>
       <p>Serve para decorar onde fica cada nota no braço.</p>
       <ol>
@@ -283,6 +298,8 @@
         <li><b>Onde escolho a nota na tela Acordes?</b> Nos 12 botões (C, C#/Db, D…) logo acima da explicação do acorde.</li>
         <li><b>Como volto ao começo da tela?</b> Role para cima, ou toque de novo no nome da tela na barra de telas.</li>
         <li><b>O aplicativo atualiza sozinho?</b> Sim. Com internet, ao abrir, ele já pega a versão nova. Se parecer antigo, feche e abra de novo.</li>
+        <li><b>O afinador não mostra nada.</b> Veja se tocou em <b>Ligar o microfone</b> e em <b>Permitir</b>. Se o navegador bloqueou, clique no cadeado ao lado do endereço do site e libere o microfone. Computador sem microfone: use os botões das cordas para afinar de ouvido.</li>
+        <li><b>O ponteiro do afinador não para quieto.</b> Toque a corda uma vez e deixe soar, sem abafar. Afaste-se de barulho, TV e conversa.</li>
         <li><b>Funciona sem internet?</b> Sim, depois de aberto uma vez com internet.</li>
       </ul></details>
 
@@ -342,6 +359,20 @@
     </div>
   </form>
   <p class="small">Este botão <b>?</b> fica sempre no alto da tela.</p>
+</dialog>
+<dialog id="tunerDlg" aria-labelledby="tunerTitle">
+  <button type="button" class="close" id="tunerClose" aria-label="Fechar">✕</button>
+  <h2 id="tunerTitle">Afinador</h2>
+  <p class="small">Violão e guitarra, afinação normal: Mi Lá Ré Sol Si Mi.</p>
+  <div class="tn-box">
+    <button type="button" class="play" id="micBtn"></button>
+    <div class="tn-note" id="tnNote">—</div>
+    <div class="tn-scale" aria-hidden="true"><span>baixa</span><div class="tn-track"><i class="tn-mid"></i><i class="tn-needle" id="tnNeedle"></i></div><span>alta</span></div>
+    <p class="tn-status" id="tnStatus" aria-live="polite"></p>
+  </div>
+  <h3 class="tn-h">Qual corda?</h3>
+  <p class="hint">Toque numa corda para <b>ouvir o som certo</b> dela (serve para afinar de ouvido, sem microfone). Com o microfone ligado, o ponteiro passa a medir só essa corda. <b>Automático</b> descobre sozinho qual corda você tocou.</p>
+  <div class="tn-strings" id="tnStrings"></div>
 </dialog>
 <script type="module" src="app.js"></script>
 </body>

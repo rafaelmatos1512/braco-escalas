@@ -18,7 +18,7 @@
 - [ ] Acordes com 7ª no campo harmônico.
 - [ ] Outras afinações (Drop D, meio tom abaixo) e modo canhoto.
 - [ ] Testar em Safari iOS e Android reais.
-- [ ] Afinador (microfone).
+- [x] Afinador (microfone + afinar de ouvido), no botão do diapasão no topo.
 - [ ] Cavaquinho, viola caipira, ukulele e baixo.
 - [ ] Metrônomo.
 

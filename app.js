@@ -1,6 +1,7 @@
 import { SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, TUNING, noteName, noteAt, ptName, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, spellChordFromRoot, PROGRESSIONS, progressionChords,
   scaleNotes, harmonicField, degreeLabels } from './music.js';
 import { midiAt, playNote, strum, sequence, schedule, stopAll, soundOn, setSound } from './audio.js';
+import { STRINGS as TSTR, nearestString, centsToString, tuneStatus, startMic, stopMic, micOn } from './tuner.js';
 import { generateVoicings, filterVoicings, cagedShapes, hasCaged, neckPositions, powerChords, stringSetTriads } from './chords.js';
 
 const $ = id => document.getElementById(id);
@@ -548,7 +549,7 @@ window.addEventListener('hashchange', () => { const t = location.hash.slice(1); 
 // guia: ícones das telas e botões "Abrir a tela"
 const TOP_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>';
 document.querySelectorAll('.gi').forEach(s => {
-  const src = document.querySelector(`#tabs [data-tab="${s.dataset.icon}"] svg`);
+  const src = s.dataset.icon === 'tuner' ? $('tunerBtn').querySelector('svg') : document.querySelector(`#tabs [data-tab="${s.dataset.icon}"] svg`);
   s.innerHTML = src ? src.outerHTML : TOP_ICON;
 });
 document.querySelectorAll('.go-tab').forEach(b => b.onclick = () => setTab(b.dataset.go));
@@ -590,6 +591,75 @@ $('helpForm').onsubmit = e => {
 $('helpGuide').onclick = () => { closeHelp(); setTab('aprender'); $('learnSearch').value = ''; searchLearn(''); };
 // na primeira vez, o popup aparece sozinho para mostrar que a ajuda existe
 try { if (!localStorage.getItem('helpSeen')) { localStorage.setItem('helpSeen', '1'); setTimeout(openHelp, 600); } } catch {}
+
+// afinador
+const tdlg = $('tunerDlg');
+const tn = { target: -1, hist: [], last: 0, idle: null };
+const MIC_ON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+function tnShow(note, status, key, c) {
+  $('tnNote').innerHTML = note;
+  $('tnStatus').textContent = status;
+  tdlg.dataset.state = key || '';
+  const n = $('tnNeedle');
+  n.hidden = c == null;
+  if (c != null) n.style.left = 50 + Math.max(-50, Math.min(50, c)) + '%';
+}
+function tnIdle() {
+  if (!micOn()) tnShow('—', 'Ligue o microfone e toque uma corda solta. Sem microfone, use os botões das cordas para afinar de ouvido.');
+  else tnShow('—', tn.target < 0 ? 'Ouvindo… toque uma corda solta, sem apertar casa.' : `Ouvindo… toque a ${TSTR[tn.target].n}ª corda solta.`);
+}
+function tnMicBtn() {
+  $('micBtn').innerHTML = MIC_ON + (micOn() ? ' Desligar o microfone' : ' Ligar o microfone');
+  $('micBtn').classList.toggle('stop', micOn());
+}
+function tnFrame(r) {
+  if (!r) {
+    if (tn.last && Date.now() - tn.last > 1500) { tn.last = 0; tn.hist = []; tnIdle(); }
+    return;
+  }
+  tn.last = Date.now();
+  tn.hist.push(r.freq); if (tn.hist.length > 5) tn.hist.shift();
+  const f = [...tn.hist].sort((a, b) => a - b)[tn.hist.length >> 1]; // mediana: ignora leituras soltas
+  const i = tn.target < 0 ? nearestString(f).i : tn.target;
+  const c = centsToString(f, i), st = tuneStatus(c), s = TSTR[i];
+  tnShow(`<b>${s.n}ª corda</b> — ${s.name} (${s.letter})`, st.text, st.key, st.key === 'far' ? null : c);
+}
+async function tnToggleMic() {
+  if (micOn()) { stopMic(); tnMicBtn(); tnIdle(); return; }
+  tnShow('—', 'Pedindo o microfone… se aparecer uma pergunta do navegador, toque em Permitir.');
+  try { await startMic(tnFrame); tnMicBtn(); tnIdle(); }
+  catch (e) {
+    tnMicBtn();
+    const msg = e && e.name === 'NotAllowedError'
+      ? 'O navegador não deixou usar o microfone. Clique no cadeado ao lado do endereço do site e permita o microfone, ou afine de ouvido com os botões das cordas.'
+      : e && (e.name === 'NotFoundError' || e.name === 'OverconstrainedError')
+        ? 'Não encontrei microfone neste aparelho. Afine de ouvido: toque no botão da corda, ouça o som e iguale no violão.'
+        : 'Não foi possível usar o microfone aqui. Afine de ouvido com os botões das cordas.';
+    tnShow('—', msg, 'err');
+  }
+}
+function tnStrings() {
+  const box = $('tnStrings'); box.innerHTML = '';
+  [{ i: -1, label: 'Automático' }, ...TSTR.map((s, i) => ({ i, label: `<b>${s.n}ª</b> ${s.name} (${s.letter})` }))].forEach(o => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.innerHTML = o.label; b.className = o.i === tn.target ? 'on' : '';
+    b.setAttribute('aria-pressed', o.i === tn.target);
+    b.onclick = () => {
+      tn.target = o.i; tn.hist = []; tnStrings();
+      if (o.i >= 0) playNote(TSTR[o.i].midi, 0, 0.6, true); // som de referência toca mesmo com o som desligado
+      if (!tn.last) tnIdle();
+    };
+    box.appendChild(b);
+  });
+}
+const openTuner = () => { tnMicBtn(); tnStrings(); tnIdle(); tdlg.showModal ? tdlg.showModal() : tdlg.setAttribute('open', ''); };
+const closeTuner = () => (tdlg.close ? tdlg.close() : tdlg.removeAttribute('open'));
+tdlg.addEventListener('close', () => { stopMic(); tn.last = 0; tn.hist = []; }); // fechar desliga o microfone
+tdlg.addEventListener('click', e => { if (e.target === tdlg) closeTuner(); });
+$('tunerBtn').onclick = openTuner;
+$('tunerClose').onclick = closeTuner;
+$('micBtn').onclick = tnToggleMic;
+document.querySelectorAll('[data-open-tuner]').forEach(b => b.onclick = openTuner);
 
 fillRoots();
 setTab(location.hash.slice(1) || 'escalas');

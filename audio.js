@@ -31,14 +31,13 @@ function audio() {
   return ctx;
 }
 
-// gera (uma vez) a amostra de uma corda vibrando
-function pluckBuffer(midi) {
-  if (cache.has(midi)) return cache.get(midi);
-  const sr = ctx.sampleRate, freq = 440 * 2 ** ((midi - 69) / 12);
+// amostra de uma corda vibrando (sem navegador, para poder testar a afinação)
+export function pluckData(midi, sr, rnd = Math.random) {
+  const freq = 440 * 2 ** ((midi - 69) / 12);
   const N = Math.max(2, Math.round(sr / freq));
   const len = Math.floor(sr * 2.4), out = new Float32Array(len), ring = new Float32Array(N);
   let prev = 0;
-  for (let i = 0; i < N; i++) { const r = Math.random() * 2 - 1; prev = prev * 0.45 + r * 0.55; ring[i] = prev; } // ataque mais macio
+  for (let i = 0; i < N; i++) { const r = rnd() * 2 - 1; prev = prev * 0.45 + r * 0.55; ring[i] = prev; } // ataque mais macio
   const decay = freq > 600 ? 0.9935 : freq > 300 ? 0.995 : 0.9965;
   for (let i = 0, k = 0; i < len; i++) {
     const cur = ring[k], nxt = ring[(k + 1) % N];
@@ -48,16 +47,25 @@ function pluckBuffer(midi) {
   }
   const fade = Math.floor(sr * 0.3);
   for (let i = 0; i < fade; i++) out[len - fade + i] *= 1 - i / fade;
-  const buf = ctx.createBuffer(1, len, sr);
+  // a média com a amostra seguinte faz a volta durar N - 0,5 amostras:
+  // a velocidade de leitura corrige para a altura exata da nota
+  return { out, rate: freq / (sr / (N - 0.5)) };
+}
+
+// gera (uma vez) o som de cada nota
+function pluckBuffer(midi) {
+  if (cache.has(midi)) return cache.get(midi);
+  const sr = ctx.sampleRate, { out, rate } = pluckData(midi, sr);
+  const buf = ctx.createBuffer(1, out.length, sr);
   buf.copyToChannel ? buf.copyToChannel(out, 0) : buf.getChannelData(0).set(out);
-  // o filtro de média atrasa meio sample: corrige a afinação com a velocidade de leitura
-  const item = { buf, rate: freq / (sr / (N + 0.5)) };
+  const item = { buf, rate };
   cache.set(midi, item);
   return item;
 }
 
-export function playNote(midi, delay = 0, vol = 0.45) {
-  if (!enabled || !audio()) return;
+// force: toca mesmo com o som desligado (referência do afinador, pedida de propósito)
+export function playNote(midi, delay = 0, vol = 0.45, force = false) {
+  if ((!enabled && !force) || !audio()) return;
   const { buf, rate } = pluckBuffer(midi);
   const src = ctx.createBufferSource(), g = ctx.createGain();
   src.buffer = buf; src.playbackRate.value = rate; g.gain.value = vol;
