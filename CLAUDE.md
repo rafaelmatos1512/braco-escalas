@@ -21,7 +21,7 @@ PWA estático (HTML/CSS/JS puro, sem build, sem dependências) que mostra notas,
 - Notas como pitch class 0–11 (C=0). Cordas indexadas 0 = 6ª (mais grave) … 5 = 1ª (mais aguda). Braço desenhado com a 1ª corda em cima; diagramas de acorde com a 6ª à esquerda.
 - Lógica musical fica em `music.js`/`chords.js` e tem teste. Toda mudança de teoria → atualizar `test/`.
 - Textos para o usuário em português simples, sem jargão sem explicação.
-- Filtros curtos viram botões (`segmentize` em `app.js`); listas longas continuam `<select>`.
+- Filtros curtos viram botões (`segmentize` em `app.js`); listas longas (nota, escala, tipo) usam `dropdown()` em `app.js`, menu próprio sobre um `<select>` escondido; chame `refreshDropdowns()` se mudar as opções.
 - Seções escondidas usam o atributo `hidden`; há `[hidden]{display:none!important}` porque media queries com `display:grid` sobrescreviam.
 
 ## Limitações conhecidas

@@ -104,9 +104,7 @@ function chordSvg(v, rootPc) {
 const formulaText = name => SCALES[name].map(i => STEP_NAME[i]).join(' · ');
 
 function renderEscalas() {
-  const sc = $('scale');
-  if (!sc.options.length) { Object.keys(SCALES).forEach(n => sc.add(new Option(n, n))); sc.onchange = e => { state.scale = e.target.value; state.sel = null; render(); }; }
-  sc.value = state.scale;
+  $('scale').value = state.scale;
   const notes = scaleNotes(state.root, state.scale);
   $('title').textContent = `${dual(state.root)} ${state.scale}  (${ptName(state.root, state.sharps)})`;
   $('scaleInfo').innerHTML =
@@ -165,7 +163,7 @@ function goChord(pc, type) {
 const memo = {};
 function renderAcordes() {
   const t = CHORD_TYPES[state.ctype], rootPc = state.croot;
-  const key = rootPc + state.ctype;
+  const key = rootPc + ':' + state.ctype;
   const all = memo[key] || (memo[key] = generateVoicings(rootPc, t.iv));
   const list = filterVoicings(all, state.cf).slice(0, 40);
   const pcs = t.iv.map(i => (rootPc + i) % 12);
@@ -209,7 +207,7 @@ function fillChordSelects() {
 function fillRoots() {
   const r = $('root'); r.innerHTML = '';
   for (let i = 0; i < 12; i++) r.add(new Option(dual(i), i));
-  r.value = state.root; fillChordSelects();
+  r.value = state.root; fillChordSelects(); refreshDropdowns();
 }
 function render() {
   try { renderTab(); } catch (err) {
@@ -219,6 +217,7 @@ function render() {
   }
 }
 function renderTab() {
+  queueMicrotask(refreshDropdowns);
   if (state.tab === 'escalas') renderEscalas();
   else if (state.tab === 'campos') renderCampos();
   else if (state.tab === 'acordes') renderAcordes();
@@ -268,6 +267,53 @@ function segmentize(id) {
   sync();
 }
 ['frets', 'frets2', 'region', 'copen', 'cbarre', 'cbass', 'cmin'].forEach(segmentize);
+
+// listas longas: menu próprio no lugar da lista nativa do navegador
+const dropdowns = [];
+function dropdown(id, cols = 1) {
+  const sel = $(id); sel.classList.add('segd');
+  const box = document.createElement('div'); box.className = 'dd';
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'dd-btn';
+  btn.setAttribute('aria-haspopup', 'listbox'); btn.setAttribute('aria-expanded', 'false');
+  const menu = document.createElement('div'); menu.className = 'dd-menu'; menu.hidden = true; menu.setAttribute('role', 'listbox');
+  menu.style.setProperty('--cols', cols);
+  box.append(btn, menu); sel.after(box);
+  const close = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  const open = () => {
+    dropdowns.forEach(d => d.close());
+    refresh(); menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    menu.querySelector('.on')?.focus();
+  };
+  const refresh = () => {
+    const cur = sel.options[sel.selectedIndex];
+    btn.innerHTML = `<span>${cur ? cur.text : ''}</span>`;
+    menu.innerHTML = '';
+    [...sel.options].forEach(o => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = o.text;
+      b.setAttribute('role', 'option');
+      if (o.value === sel.value) { b.className = 'on'; b.setAttribute('aria-selected', 'true'); }
+      b.onclick = () => { sel.value = o.value; close(); sel.dispatchEvent(new Event('change')); refresh(); btn.focus(); };
+      menu.appendChild(b);
+    });
+  };
+  btn.onclick = e => { e.stopPropagation(); menu.hidden ? open() : close(); };
+  menu.onclick = e => e.stopPropagation();
+  menu.onkeydown = e => {
+    const items = [...menu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') { close(); btn.focus(); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); items[Math.min(i + 1, items.length - 1)]?.focus(); }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); items[Math.max(i - 1, 0)]?.focus(); }
+  };
+  dropdowns.push({ close, refresh }); refresh();
+}
+function refreshDropdowns() { dropdowns.forEach(d => d.refresh()); }
+document.addEventListener('click', () => dropdowns.forEach(d => d.close()));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') dropdowns.forEach(d => d.close()); });
+// a lista de escalas é preenchida na primeira renderização
+if (!$('scale').options.length) Object.keys(SCALES).forEach(n => $('scale').add(new Option(n, n)));
+$('scale').onchange = e => { state.scale = e.target.value; state.sel = null; render(); };
+fillChordSelects();
+dropdown('root', 3); dropdown('scale'); dropdown('ctype');
 
 fillRoots(); render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
