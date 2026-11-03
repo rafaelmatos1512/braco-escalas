@@ -244,3 +244,12 @@ details.guide ol,details.guide ul{margin:8px 0;padding-left:1.4rem}
 details.guide li{margin:7px 0;line-height:1.5}
 .go-tab{font:inherit;font-weight:700;padding:10px 16px;border-radius:999px;border:2px solid var(--acc);background:var(--acc-bg);color:var(--fg);cursor:pointer}
 .go-tab:hover{filter:brightness(1.08)}
+
+/* setinha de abrir/fechar nos títulos (aponta para baixo = fechado; para cima = aberto) */
+details > summary{list-style:none;display:flex;align-items:center;gap:10px;padding:4px 0;-webkit-user-select:none;user-select:none}
+details > summary::-webkit-details-marker{display:none}
+details > summary::after{content:"";flex:none;margin-left:auto;width:34px;height:34px;border-radius:50%;
+  background:var(--acc-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f59e0b' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat center/20px;
+  border:1px solid var(--border);transition:transform .2s}
+details[open] > summary::after{transform:rotate(180deg)}
+details > summary:hover::after{border-color:var(--acc)}
