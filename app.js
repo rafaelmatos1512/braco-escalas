@@ -1,11 +1,11 @@
-import { SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, TUNING, noteName, noteAt, ptName, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, PROGRESSIONS, progressionChords,
+import { SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, TUNING, noteName, noteAt, ptName, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, spellChordFromRoot, PROGRESSIONS, progressionChords,
   scaleNotes, harmonicField, degreeLabels } from './music.js';
 import { midiAt, playNote, strum, sequence, schedule, stopAll, soundOn, setSound } from './audio.js';
 import { generateVoicings, filterVoicings, cagedShapes, hasCaged, neckPositions, powerChords, stringSetTriads } from './chords.js';
 
 const $ = id => document.getElementById(id);
 const state = {
-  tab: 'escalas', root: 5, scale: 'Maior', frets: 12, sharps: true, all: false, sel: null,
+  tab: 'escalas', fsel: null, root: 5, scale: 'Maior', frets: 12, sharps: true, all: false, sel: null,
   frets2: 24, croot: 0, ctype: 'maior', cvoice: null,
   cf: { region: 'all', open: 'any', barre: 'any', bass: 'root', min: 4 },
   g: { root: 4, kind: 'pow', tri: 'maior', set: '5,4,3', ext: '7', pos: null, labels: 'notes' },
@@ -248,18 +248,44 @@ function renderEscalas() {
 
 /* ---------- ABA CAMPOS ---------- */
 function renderCampos() {
+  const sel = state.fsel;
   $('fieldCards').innerHTML = Object.keys(SCALES).map(name => {
     const f = harmonicField(state.root, name, state.sharps);
     if (!f) return '';
-    const cells = f.map((c, i) =>
-      `<button type="button" class="cell ${i === 0 ? 'root' : ''}" data-i="${i}" data-s="${name}"><b>${c.chord}</b><small>${c.roman}</small></button>`).join('');
-    return `<div class="scard"><div class="name">${f[0].chord.replace(/m$/, '')} ${name}</div><div class="row">${cells}</div></div>`;
+    const cells = f.map((c, i) => {
+      const on = sel && sel.scale === name && sel.idx === i;
+      return `<button type="button" class="cell ${on ? 'on' : ''} ${i === 0 ? 'root' : ''}" data-i="${i}" data-s="${name}"><b>${c.chord}</b><small>${c.roman}</small></button>`;
+    }).join('');
+    const card = `<div class="scard"><div class="name">${f[0].chord.replace(/m$/, '')} ${name}</div><div class="row">${cells}</div></div>`;
+    return card + (sel && sel.scale === name ? fieldDetail(f[sel.idx], f[0].chord.replace(/m$/, '') + ' ' + name) : '');
   }).join('');
   document.querySelectorAll('#fieldCards .cell').forEach(c => c.onclick = () => {
-    const f = harmonicField(state.root, c.dataset.s, state.sharps)[+c.dataset.i];
-    strumV(bestVoicing(f.notes[0], f.type));
-    goChord(f.notes[0], f.type);
+    const name = c.dataset.s, i = +c.dataset.i;
+    const same = sel && sel.scale === name && sel.idx === i;
+    state.fsel = same ? null : { scale: name, idx: i };
+    if (!same) { const f = harmonicField(state.root, name, state.sharps)[i]; strumV(bestVoicing(f.notes[0], f.type)); }
+    renderCampos();
+    if (!same) $('fdetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
+  if (sel) {
+    const f = harmonicField(state.root, sel.scale, state.sharps)[sel.idx];
+    $('fPlay').onclick = () => strumV(bestVoicing(f.notes[0], f.type));
+    $('fMore').onclick = () => goChord(f.notes[0], f.type);
+    $('fdetail').querySelectorAll('.vc').forEach(b => b.onclick = () => strum(fieldShapes(f)[+b.dataset.i].frets));
+  }
+}
+// as formas mais fáceis de um acorde do campo (até 4)
+const fieldShapes = f => voicingsOf(f.notes[0], f.type).filter(v => v.bassIsRoot).slice(0, 4);
+function fieldDetail(f, where) {
+  const t = CHORD_TYPES[f.type], rootName = f.chord.replace(/[m°+]$/, '');
+  const cn = spellChordFromRoot(rootName, t.iv, t.letters), names = nameMap(f.notes, cn); // mesma grafia do campo (Bb em F maior)
+  const shapes = fieldShapes(f);
+  return `<div class="box fdetail" id="fdetail">
+    <p><b class="big">${f.chord}</b> — ${ptOf(rootName)}, ${t.label.toLowerCase()} · grau <b>${f.roman}</b> de ${where}</p>
+    <p>Notas: <b>${cn.join(' - ')}</b></p>
+    <p>${playBtn('fPlay', 'Ouvir')} <button type="button" class="link" id="fMore">Ver todas as formas e o braço inteiro →</button></p>
+    <div class="grid">${shapes.map((v, i) => `<button type="button" class="vc" data-i="${i}">${chordSvg(v, f.notes[0], names)}<small>${v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta'}</small></button>`).join('')}</div>
+  </div>`;
 }
 function goChord(pc, type) {
   state.croot = pc; state.ctype = type; state.cvoice = null;
@@ -372,7 +398,7 @@ function setTab(t) {
   render(); window.scrollTo(0, 0);
 }
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => setTab(b.dataset.tab));
-$('root').onchange = e => { state.root = +e.target.value; state.sel = null; render(); };
+$('root').onchange = e => { state.root = +e.target.value; state.sel = null; state.fsel = null; render(); };
 $('sharps').onchange = e => { state.sharps = e.target.checked; fillRoots(); render(); };
 $('frets').onchange = e => { state.frets = +e.target.value; render(); };
 $('all').onchange = e => { state.all = e.target.checked; render(); };
