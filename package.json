@@ -1,0 +1,12 @@
+{
+  "name": "braco-escalas",
+  "version": "0.1.0",
+  "description": "Mapa de notas, escalas, campo harmônico e acordes (inclusive CAGED) no braço do violão/guitarra. PWA sem dependências.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "python3 serve.py",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": { "node": ">=18" }
+}
