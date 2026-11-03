@@ -22,6 +22,10 @@
 - [ ] Cavaquinho, viola caipira, ukulele e baixo.
 - [ ] Metrônomo.
 
+## Ideia para depois: aba Cursos
+O avô tem muitos cursos (Hotmart, Moises e outros). Ideia: aba "Cursos" com os links organizados e pesquisa junto com o Aprender.
+Hotmart e Moises não têm API aberta para listar as aulas que um aluno comprou; o caminho realista é uma lista de links cadastrada à mão (nome, assunto, link), pesquisável. Atualização automática só se alguma plataforma oferecer exportação/API.
+
 ## Feedback do usuário (avô)
 - Começar o braço em F, mostrar sustenidos e bemóis.
 - Referência visual: app "Escalas e Campo Harmônico" (cartões com notas e graus).
