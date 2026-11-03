@@ -27,6 +27,8 @@
     <button data-tab="escalas" class="on">Escalas</button>
     <button data-tab="campos">Campos</button>
     <button data-tab="acordes">Acordes</button>
+    <button data-tab="guitarra">Guitarra</button>
+    <button data-tab="progressoes">Progressões</button>
     <button data-tab="aprender">Aprender</button>
   </nav>
  </div>
@@ -90,6 +92,43 @@
     </div>
   </section>
 
+  <section id="tab-guitarra" hidden>
+    <div class="layout">
+      <aside><div class="controls">
+        <label>Tipo <select id="gkind"><option value="pow">Power chord (5)</option><option value="tri">Tríades (3 cordas)</option><option value="ext">Acordes com tensão</option></select></label>
+        <label id="gtriL">Tríade <select id="gtri"><option value="maior">Maior</option><option value="menor">Menor</option><option value="dim">Diminuta</option><option value="aug">Aumentada</option></select></label>
+        <label id="gsetL">Cordas <select id="gset"><option value="5,4,3">1ª-2ª-3ª (agudas)</option><option value="4,3,2">2ª-3ª-4ª</option><option value="3,2,1">3ª-4ª-5ª</option><option value="2,1,0">4ª-5ª-6ª (graves)</option></select></label>
+        <label id="gextL">Acorde <select id="gext"><option value="7">7</option><option value="m7">m7</option><option value="maj7">maj7</option><option value="9">9</option><option value="7#9">7(#9) Hendrix</option><option value="add9">add9</option><option value="sus4">sus4</option><option value="6/9">6/9</option><option value="m7b5">m7(b5)</option></select></label>
+        <label>No braço mostrar <select id="glabels"><option value="notes">Notas</option><option value="iv">Intervalos</option></select></label>
+      </div></aside>
+      <div class="results">
+        <div class="box"><p><b>Acordes de guitarrista.</b> Formas que guitarristas usam muito, espalhadas pelo braço inteiro (até a casa 24). Toque numa forma para ver só ela no braço.</p></div>
+        <h3 class="first">Nota do acorde</h3>
+        <div id="gRoots" class="roots"></div>
+        <div id="gInfo" class="box"></div>
+        <div id="gPositions" class="grid"></div>
+        <div id="gSel" class="box"></div>
+        <div class="board-wrap"><div id="board4"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-progressoes" hidden>
+    <div class="box"><p><b>O que é uma progressão?</b> É a sequência de acordes de uma música. Os números romanos dizem a posição de cada acorde no tom, então a mesma progressão serve em qualquer tom: escolha o tom e o aplicativo troca os acordes sozinho.</p></div>
+    <h3 class="first">Tom da música</h3>
+    <div id="pKeys" class="roots"></div>
+    <div class="opts">
+      <label>Modo <select id="pmode"><option value="maior">Maior (alegre)</option><option value="menor">Menor (triste)</option></select></label>
+      <label>No braço mostrar <select id="plabels"><option value="notes">Notas</option><option value="iv">Intervalos</option></select></label>
+    </div>
+    <h3>Progressões mais usadas — toque numa</h3>
+    <div id="pList" class="plist"></div>
+    <div id="pDetail" class="box"></div>
+    <div class="board-wrap"><div id="board3"></div></div>
+    <h3 id="pPosTitle">Onde tocar este acorde no braço (casas 0 a 24)</h3>
+    <div id="pPositions" class="grid"></div>
+  </section>
+
   <section id="tab-aprender" hidden>
     <div class="box"><p>Aqui estão as explicações em linguagem simples. Toque num título para abrir.</p></div>
     <details open><summary>Como usar este aplicativo</summary>
@@ -119,6 +158,12 @@
       <p>É quando você apoia um dedo (geralmente o indicador) esticado sobre várias cordas na mesma casa, como uma barra. Aparece no desenho como uma faixa arredondada. É mais difícil no começo, mas permite tocar o mesmo acorde em qualquer parte do braço.</p></details>
     <details><summary>O que é o sistema CAGED</summary>
       <p>É um jeito de decorar o braço usando 5 acordes que todo iniciante aprende: <b>C, A, G, E e D</b>. Cada um desses desenhos pode ser "levado" para outras casas com a ajuda da pestana, e continua sendo o mesmo tipo de acorde. Por exemplo, o desenho do E (Mi) feito com pestana na casa 1 vira F (Fá). Juntando as 5 formas, você encontra o mesmo acorde do começo ao fim do braço. Veja na aba Acordes.</p></details>
+    <details><summary>O que é uma progressão</summary>
+      <p>É a ordem dos acordes de uma música. Em vez de decorar "C, G, Am, F", os músicos decoram "I – V – vi – IV", que vale em qualquer tom. Na aba <b>Progressões</b> você escolhe o tom e vê os acordes certos daquela sequência.</p></details>
+    <details><summary>Power chord e tríades</summary>
+      <p><b>Power chord</b> (escrito com 5, como E5) tem só duas notas diferentes: a base e a quinta. É o acorde do rock. <b>Tríade</b> é o acorde de 3 notas tocado em só 3 cordas, mais leve. A <b>inversão</b> diz qual nota fica embaixo: na fundamental é a nota do acorde, na 1ª inversão é a terça, na 2ª inversão é a quinta.</p></details>
+    <details><summary>Intervalos: 1, 3, 5, b7…</summary>
+      <p>Em vez do nome da nota, o braço pode mostrar o "papel" dela no acorde: <b>1</b> é a nota base, <b>3</b> é a terça (b3 se o acorde é menor), <b>5</b> é a quinta, <b>b7</b> e <b>7</b> são as sétimas, <b>9</b> é a nona. Guitarristas pensam assim porque o desenho vale para qualquer tom.</p></details>
     <details><summary>As cordas do violão</summary>
       <p>Da mais grossa para a mais fina: 6ª corda Mi, 5ª Lá, 4ª Ré, 3ª Sol, 2ª Si, 1ª Mi. No desenho do braço, a corda mais fina fica em cima.</p></details>
   </section>

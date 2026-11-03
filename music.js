@@ -69,8 +69,24 @@ export function spelledScale(root, name, useSharps) {
   return bestSpelling(root, scaleNotes(root, name), scaleLetters(name), useSharps);
 }
 
-export function spelledChord(rootPc, iv, useSharps) {
-  return bestSpelling(rootPc, iv.map(i => (rootPc + i) % 12), iv.map(i => INTERVAL_LETTER[i % 12]), useSharps);
+const chordLetters = (iv, letters) => letters || iv.map(i => INTERVAL_LETTER[i % 12]);
+export function spelledChord(rootPc, iv, useSharps, letters) {
+  return bestSpelling(rootPc, iv.map(i => (rootPc + i) % 12), chordLetters(iv, letters), useSharps);
+}
+// nome escrito -> nota (0-11)
+export function pcOfName(name) {
+  const acc = name.slice(1);
+  return (LETTER_PC[LETTERS.indexOf(name[0])] + acc.split('#').length - acc.split('b').length + 12) % 12;
+}
+// notas de um acorde a partir de uma tônica já escrita (ex.: o IV de Gb maior é Cb)
+export function spellChordFromRoot(rootName, iv, letters) {
+  const li = LETTERS.indexOf(rootName[0]), rootPc = pcOfName(rootName), ls = chordLetters(iv, letters);
+  return iv.map((i, k) => spellNote((rootPc + i) % 12, li + ls[k]));
+}
+// nome do grau `deg` da escala, com alteração `alt` em semitons (ex.: bVII)
+export function spellDegree(key, scaleName, deg, alt, useSharps) {
+  const sp = spelledScale(key, scaleName, useSharps);
+  return spellNote((scaleNotes(key, scaleName)[deg] + alt + 12) % 12, LETTERS.indexOf(sp[deg][0]));
 }
 
 // mapa nota (0-11) -> nome escrito, para desenhar no braço
@@ -112,15 +128,27 @@ export const CHORD_TYPES = {
     desc: 'Acorde tenso e instável, que não quer ficar parado. Serve de passagem para outro acorde. É marcado com o sinal °.' },
   aug: { label: 'Aumentado (+)', suffix: '+', iv: [0,4,8],
     desc: 'Acorde estranho, "flutuante", que parece suspenso no ar. É marcado com o sinal +.' },
-  sus2: { label: 'Suspenso 2 (sus2)', suffix: 'sus2', iv: [0,2,7],
+  sus2: { label: 'Suspenso 2 (sus2)', suffix: 'sus2', iv: [0,2,7], ivNames: ['1','2','5'],
     desc: 'Não é nem alegre nem triste, soa aberto e indefinido, porque falta a nota que decide se é maior ou menor.' },
-  sus4: { label: 'Suspenso 4 (sus4)', suffix: 'sus4', iv: [0,5,7],
+  sus4: { label: 'Suspenso 4 (sus4)', suffix: 'sus4', iv: [0,5,7], ivNames: ['1','4','5'],
     desc: 'Parecido com o sus2, também aberto e indefinido. Muitas vezes volta para o acorde maior logo depois.' },
   '6': { label: 'Com sexta (6)', suffix: '6', iv: [0,4,7,9],
     desc: 'Acorde maior com uma nota a mais. Soa doce e estável. Comum no samba e na bossa nova.' },
   '9': { label: 'Com nona (9)', suffix: '9', iv: [0,4,7,10,2],
     desc: 'Acorde com 7 e uma nota extra. Soa rico e cheio de personalidade, comum no blues e no funk.' },
+  m7b5: { label: 'Meio-diminuto (m7b5)', suffix: 'm7(b5)', iv: [0,3,6,10],
+    desc: 'Também chamado de meio-diminuto (ø). Soa tenso e melancólico. Aparece no ii–V–i do tom menor, no jazz e na bossa nova.' },
+  '5': { label: 'Power chord (5)', suffix: '5', iv: [0,7],
+    desc: 'Só a nota base e a quinta. Não é maior nem menor, por isso soa forte e "neutro". É o acorde do rock e do metal, quase sempre com distorção.' },
+  add9: { label: 'Com nona adicionada (add9)', suffix: 'add9', iv: [0,4,7,2],
+    desc: 'Acorde maior com a nona, sem a sétima. Soa brilhante e aberto, muito usado no pop, no rock e no gospel.' },
+  '7#9': { label: 'Sétima com nona aumentada (7#9)', suffix: '7(#9)', iv: [0,4,7,10,3], letters: [0,2,4,6,1], ivNames: ['1','3','5','b7','#9'],
+    desc: 'O "acorde do Hendrix". Mistura o maior e o menor ao mesmo tempo, som sujo e marcante do blues-rock e do funk.' },
+  '6/9': { label: 'Sexta com nona (6/9)', suffix: '6/9', iv: [0,4,9,2],
+    desc: 'Acorde maior com a sexta e a nona. Soa suave e "final", muito usado para terminar músicas na bossa nova e no jazz.' },
 };
+const INTERVAL_NAME = { 0: '1', 1: 'b9', 2: '9', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5', 8: '#5', 9: '6', 10: 'b7', 11: '7' };
+export const intervalNames = t => t.ivNames || t.iv.map(i => INTERVAL_NAME[i % 12]);
 
 export const SCALE_INFO = {
   'Maior': 'A escala mais conhecida, o "dó ré mi fá sol lá si". Soa alegre e clara. É a base de quase toda a música.',
@@ -133,3 +161,55 @@ export const SCALE_INFO = {
   'Blues': 'É a pentatônica menor com uma nota extra (a "blue note"), que dá o tempero característico do blues.',
 };
 export const STEP_NAME = { 1: 'semitom', 2: 'tom', 3: 'tom e meio' };
+
+/* ---------- progressões ---------- */
+// cada acorde: [grau da escala (0 = I), alteração em semitons, tipo de acorde, nome do grau]
+export const PROGRESSIONS = {
+  maior: [
+    { name: 'I – IV – V', desc: 'A mais básica de todas. Rock, sertanejo, forró, música de roda: com esses três acordes dá para tocar centenas de músicas.',
+      chords: [[0, 0, 'maior', 'I'], [3, 0, 'maior', 'IV'], [4, 0, 'maior', 'V']] },
+    { name: 'I – V – vi – IV', desc: 'A progressão do pop. Está em centenas de sucessos de pop, rock, gospel e sertanejo.',
+      chords: [[0, 0, 'maior', 'I'], [4, 0, 'maior', 'V'], [5, 0, 'menor', 'vi'], [3, 0, 'maior', 'IV']] },
+    { name: 'I – vi – IV – V', desc: 'Clássica dos anos 50 e da Jovem Guarda. Soa nostálgica e romântica.',
+      chords: [[0, 0, 'maior', 'I'], [5, 0, 'menor', 'vi'], [3, 0, 'maior', 'IV'], [4, 0, 'maior', 'V']] },
+    { name: 'vi – IV – I – V', desc: 'A mesma do pop, começando pelo acorde menor. Soa mais emotiva.',
+      chords: [[5, 0, 'menor', 'vi'], [3, 0, 'maior', 'IV'], [0, 0, 'maior', 'I'], [4, 0, 'maior', 'V']] },
+    { name: 'I – IV – I – V7', desc: 'Comum no forró, no sertanejo raiz e nas músicas de festa junina. O V7 prepara a volta para o I.',
+      chords: [[0, 0, 'maior', 'I'], [3, 0, 'maior', 'IV'], [0, 0, 'maior', 'I'], [4, 0, '7', 'V7']] },
+    { name: 'ii – V – I', desc: 'A base do jazz e da bossa nova. O V7 cria tensão e o I resolve. Usa acordes com sétima.',
+      chords: [[1, 0, 'm7', 'ii7'], [4, 0, '7', 'V7'], [0, 0, 'maj7', 'Imaj7']] },
+    { name: 'I – vi – ii – V', desc: 'A "volta" do samba, da bossa e do jazz, usada para retornar ao começo da música.',
+      chords: [[0, 0, 'maj7', 'Imaj7'], [5, 0, 'm7', 'vi7'], [1, 0, 'm7', 'ii7'], [4, 0, '7', 'V7']] },
+    { name: 'I – VI7 – ii – V7', desc: 'Clássica do samba e do choro. O VI7 (maior com sétima) "puxa" para o ii.',
+      chords: [[0, 0, 'maior', 'I'], [5, 0, '7', 'VI7'], [1, 0, 'menor', 'ii'], [4, 0, '7', 'V7']] },
+    { name: 'Blues de 12 compassos', desc: 'A base do blues e do rock antigo. São 12 compassos, um acorde por compasso, todos com sétima.',
+      chords: [[0, 0, '7', 'I7'], [0, 0, '7', 'I7'], [0, 0, '7', 'I7'], [0, 0, '7', 'I7'], [3, 0, '7', 'IV7'], [3, 0, '7', 'IV7'],
+        [0, 0, '7', 'I7'], [0, 0, '7', 'I7'], [4, 0, '7', 'V7'], [3, 0, '7', 'IV7'], [0, 0, '7', 'I7'], [4, 0, '7', 'V7']] },
+  ],
+  menor: [
+    { name: 'i – iv – v', desc: 'A básica do tom menor. Soa triste e simples.',
+      chords: [[0, 0, 'menor', 'i'], [3, 0, 'menor', 'iv'], [4, 0, 'menor', 'v']] },
+    { name: 'i – iv – V7', desc: 'Com o V maior com sétima, a volta para o i fica mais forte. Comum no tango, no bolero, na MPB e no flamenco.',
+      chords: [[0, 0, 'menor', 'i'], [3, 0, 'menor', 'iv'], [4, 0, '7', 'V7']] },
+    { name: 'i – VI – III – VII', desc: 'Muito usada no rock e no pop em tom menor.',
+      chords: [[0, 0, 'menor', 'i'], [5, 0, 'maior', 'VI'], [2, 0, 'maior', 'III'], [6, 0, 'maior', 'VII']] },
+    { name: 'i – VII – VI – V', desc: 'Cadência andaluza: o som espanhol do flamenco.',
+      chords: [[0, 0, 'menor', 'i'], [6, 0, 'maior', 'VII'], [5, 0, 'maior', 'VI'], [4, 0, 'maior', 'V']] },
+    { name: 'i – VI – VII', desc: 'Soa épica. Comum no rock e em trilhas sonoras.',
+      chords: [[0, 0, 'menor', 'i'], [5, 0, 'maior', 'VI'], [6, 0, 'maior', 'VII']] },
+    { name: 'iiø – V7 – i', desc: 'O ii–V–i do tom menor, do jazz e da bossa. O primeiro acorde é o meio-diminuto.',
+      chords: [[1, 0, 'm7b5', 'iiø'], [4, 0, '7', 'V7'], [0, 0, 'm7', 'i7']] },
+  ],
+};
+
+// monta os acordes de uma progressão num tom
+export function progressionChords(key, mode, prog, useSharps) {
+  const scale = mode === 'maior' ? 'Maior' : 'Menor';
+  const notes = scaleNotes(key, scale);
+  return prog.chords.map(([deg, alt, type, roman]) => {
+    const t = CHORD_TYPES[type], rootName = spellDegree(key, scale, deg, alt, useSharps);
+    const rootPc = (notes[deg] + alt + 12) % 12;
+    return { roman, type, rootPc, rootName, name: rootName + t.suffix,
+      names: spellChordFromRoot(rootName, t.iv, t.letters), pcs: t.iv.map(i => (rootPc + i) % 12) };
+  });
+}

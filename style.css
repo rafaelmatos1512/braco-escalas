@@ -22,7 +22,7 @@ input[type=checkbox]{width:22px;height:22px}
 .box{background:var(--card);border-radius:12px;padding:10px 14px;margin:8px 0}
 .box p{margin:6px 0}
 .board-wrap{background:var(--card);border-radius:12px;padding:8px 4px;margin:8px 0}
-#board svg,#board2 svg{width:100%;height:auto;display:block;margin:0 auto 8px}
+#board svg,#board2 svg,#board3 svg,#board4 svg{width:100%;height:auto;display:block;margin:0 auto 8px}
 .legend{font-size:.85rem;color:var(--mut);margin:4px 0}
 .d{display:inline-block;width:12px;height:12px;border-radius:50%;margin:0 4px 0 10px;vertical-align:middle}
 .d.o{background:var(--acc)}.d.b{background:var(--sc)}.d.g{background:var(--g)}
@@ -106,3 +106,18 @@ header{position:relative;z-index:10}
 .vc{background:var(--card);border:3px solid transparent;width:100%}
 .vc.active{border-color:var(--g)}
 .cell:focus-visible,.vc:focus-visible,.seg button:focus-visible,.roots button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+
+/* progressões */
+.plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.pcard{font:inherit;text-align:left;padding:10px 12px;border-radius:12px;border:2px solid #334155;background:var(--card);color:var(--fg);cursor:pointer}
+.pcard b{display:block;font-size:1.05rem}
+.pcard span{display:block;color:var(--mut);font-size:.9rem;margin-top:2px}
+.pcard.active{border-color:var(--acc);background:#3a2a0a}
+.steps{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.steps button{font:inherit;min-width:72px;padding:8px 12px;border-radius:10px;border:2px solid #334155;background:#0f172a;color:var(--fg);cursor:pointer;text-align:center}
+.steps button b{display:block;font-size:1.2rem}
+.steps button small{color:var(--mut)}
+.steps button.on{border-color:var(--acc);background:#3a2a0a}
+.pcard:focus-visible,.steps button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+/* 6 abas: no celular viram 2 linhas de 3 */
+@media (max-width:640px){ nav{display:grid;grid-template-columns:repeat(3,1fr)} nav button{padding:10px 4px} }

@@ -1,12 +1,14 @@
-import { SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, TUNING, noteName, noteAt, ptName, ptOf, spelledScale, spelledChord, nameMap,
+import { SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, TUNING, noteName, noteAt, ptName, ptOf, spelledScale, spelledChord, nameMap, intervalNames, PROGRESSIONS, progressionChords,
   scaleNotes, harmonicField, degreeLabels } from './music.js';
-import { generateVoicings, filterVoicings, cagedShapes, hasCaged } from './chords.js';
+import { generateVoicings, filterVoicings, cagedShapes, hasCaged, neckPositions, powerChords, stringSetTriads } from './chords.js';
 
 const $ = id => document.getElementById(id);
 const state = {
   tab: 'escalas', root: 5, scale: 'Maior', frets: 12, sharps: true, all: false, sel: null,
   frets2: 24, croot: 0, ctype: 'maior', cvoice: null,
   cf: { region: 'all', open: 'any', barre: 'any', bass: 'root', min: 4 },
+  g: { root: 4, kind: 'pow', tri: 'maior', set: '5,4,3', ext: '7', pos: null, labels: 'notes' },
+  p: { key: 0, mode: 'maior', idx: 0, step: 0, pos: null, labels: 'notes' },
 };
 const NS = 'http://www.w3.org/2000/svg';
 const el = (tag, attrs, parent) => {
@@ -16,6 +18,7 @@ const el = (tag, attrs, parent) => {
 };
 const nn = n => noteName(n, state.sharps);
 const dual = (pc, suf = '') => SHARP[pc] === FLAT[pc] ? SHARP[pc] + suf : `${SHARP[pc]}${suf} / ${FLAT[pc]}${suf}`;
+const STRING_NAMES = ['6ª corda (a mais grossa)', '5ª corda', '4ª corda', '3ª corda', '2ª corda', '1ª corda (a mais fina)'];
 const ORD = ['1ª', '2ª', '3ª', '4ª', '5ª', '6ª', '7ª'];
 
 /* ---------- braço (linhas empilhadas) ---------- */
@@ -63,9 +66,10 @@ function drawRow(host, from, to, o) {
     }
   }
 }
+const perRowFor = (w, frets = 24) => (w >= 1400 && frets > 12 ? 24 : w >= 760 ? 12 : 6);
 function drawBoard(host, frets, o) {
   host.innerHTML = '';
-  const perRow = host.clientWidth >= 760 ? 12 : 6;
+  const perRow = perRowFor(host.clientWidth, frets);
   for (let from = 1; from <= frets; from += perRow)
     drawRow(host, from, Math.min(from + perRow - 1, frets), o);
 }
@@ -100,6 +104,77 @@ function chordSvg(v, rootPc, names) {
     el('text', { x: cx, y: cy + 3.5, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 700, fill: '#0f172a' }, svg).textContent = (names && names.get(nt)) || nn(nt);
   });
   return wrap.innerHTML;
+}
+
+/* ---------- cartões de formas (Guitarra / Progressões) ---------- */
+function positionCards(box, list, rootPc, names, sel, onPick) {
+  box.innerHTML = list.map((v, i) =>
+    `<button type="button" class="vc ${sel === i ? 'active' : ''}" data-i="${i}">${chordSvg(v, rootPc, names)}` +
+    `<small>${v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta'}${v.shape ? ' · forma de ' + v.shape : ''}</small>` +
+    (v.label ? `<span class="tag">${v.label}</span>` : '') + (v.barre ? '<span class="tag">pestana</span>' : '') + '</button>').join('');
+  box.querySelectorAll('.vc').forEach(b => b.onclick = () => onPick(sel === +b.dataset.i ? null : +b.dataset.i));
+}
+const howTo = (v, names) => '<ol class="str">' + v.frets.map((f, s) =>
+  `<li>${STRING_NAMES[s]}: ${f < 0 ? 'não tocar' : f === 0 ? `solta (${names.get(noteAt(s, 0))})` : `casa ${f} (${names.get(noteAt(s, f))})`}</li>`).join('') + '</ol>';
+const labelMap = (pcs, names, t, mode) => nameMap(pcs, mode === 'iv' ? intervalNames(t) : names);
+const rootButtons = (box, cur, onPick) => {
+  box.innerHTML = Array.from({ length: 12 }, (_, i) => `<button type="button" data-p="${i}" class="${i === cur ? 'on' : ''}">${dual(i)}</button>`).join('');
+  box.querySelectorAll('button').forEach(b => b.onclick = () => onPick(+b.dataset.p));
+};
+
+/* ---------- ABA GUITARRA ---------- */
+const G_INFO = {
+  pow: 'Power chord: só a nota base e a quinta (às vezes a oitava por cima). Não é maior nem menor, por isso soa forte e "neutro". É o acorde do rock e do metal, quase sempre com distorção. O mesmo desenho anda pelo braço inteiro.',
+  tri: 'Tríade: o acorde em só 3 cordas. Guitarristas usam muito nas cordas agudas para fazer uma base mais leve ou dividir com outro violão. Cada desenho tem uma nota diferente embaixo (fundamental, 1ª ou 2ª inversão).',
+};
+function renderGuitarra() {
+  const g = state.g;
+  ['gtriL', 'gsetL'].forEach(id => $(id).hidden = g.kind !== 'tri');
+  $('gextL').hidden = g.kind !== 'ext';
+  const type = g.kind === 'pow' ? '5' : g.kind === 'tri' ? g.tri : g.ext, t = CHORD_TYPES[type];
+  const cn = spelledChord(g.root, t.iv, state.sharps, t.letters), pcs = t.iv.map(i => (g.root + i) % 12);
+  const names = nameMap(pcs, cn), shown = labelMap(pcs, cn, t, g.labels);
+  const list = g.kind === 'pow' ? powerChords(g.root)
+    : g.kind === 'tri' ? stringSetTriads(g.root, t.iv, g.set.split(',').map(Number))
+    : neckPositions(g.root, type, t.iv);
+  rootButtons($('gRoots'), g.root, p => { g.root = p; g.pos = null; renderGuitarra(); });
+  $('gInfo').innerHTML = `<p><b>${cn[0]}${t.suffix}</b> — ${ptOf(cn[0])}, ${t.label.toLowerCase()}</p>` +
+    `<p>Notas: <b>${cn.join(' - ')}</b> &nbsp;(${intervalNames(t).join(' - ')})</p><p>${G_INFO[g.kind] || t.desc}</p>` +
+    `<p>${list.length} formas pelo braço, da casa mais baixa para a mais alta.</p>`;
+  positionCards($('gPositions'), list, g.root, shown, g.pos, i => { g.pos = i; renderGuitarra(); if (i !== null) $('gSel').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  const v = g.pos !== null ? list[g.pos] : null;
+  $('gSel').innerHTML = v ? `<p><b>Como tocar:</b></p>${howTo(v, names)}<p>Toque na forma de novo para ver todas as posições.</p>`
+    : '<p>Abaixo: todas as notas deste acorde no braço inteiro. Toque numa forma acima para ver só ela.</p>';
+  drawBoard($('board4'), 24, { inScale: new Set(pcs), names: shown, rootPc: g.root, all: false, exact: v ? v.frets : null });
+}
+
+/* ---------- ABA PROGRESSÕES ---------- */
+function renderProgressoes() {
+  const p = state.p, list = PROGRESSIONS[p.mode];
+  if (p.idx >= list.length) p.idx = 0;
+  const scale = p.mode === 'maior' ? 'Maior' : 'Menor', keyName = spelledScale(p.key, scale, state.sharps)[0];
+  rootButtons($('pKeys'), p.key, k => { p.key = k; p.step = 0; p.pos = null; renderProgressoes(); });
+  $('pList').innerHTML = list.map((pr, i) => {
+    const ch = progressionChords(p.key, p.mode, pr, state.sharps);
+    const seq = pr.chords.length > 6 ? ch.slice(0, 12).map(c => c.name).join(' · ') : ch.map(c => c.name).join(' – ');
+    return `<button type="button" class="pcard ${i === p.idx ? 'active' : ''}" data-i="${i}"><b>${pr.name}</b><span>${seq}</span></button>`;
+  }).join('');
+  $('pList').querySelectorAll('.pcard').forEach(b => b.onclick = () => { p.idx = +b.dataset.i; p.step = 0; p.pos = null; renderProgressoes(); });
+
+  const pr = list[p.idx], chords = progressionChords(p.key, p.mode, pr, state.sharps);
+  if (p.step >= chords.length) p.step = 0;
+  const c = chords[p.step], t = CHORD_TYPES[c.type];
+  const names = nameMap(c.pcs, c.names), shown = labelMap(c.pcs, c.names, t, p.labels);
+  $('pDetail').innerHTML = `<h2>${pr.name} em ${keyName} ${p.mode}</h2><p>${pr.desc}</p>` +
+    `<div class="steps">${chords.map((x, i) => `<button type="button" data-i="${i}" class="${i === p.step ? 'on' : ''}"><b>${x.name}</b><small>${x.roman}</small></button>`).join('')}</div>` +
+    `<p><b>${c.name}</b> (${ptOf(c.rootName)}, ${t.label.toLowerCase()}): notas <b>${c.names.join(' - ')}</b>. Toque em outro acorde da sequência para ver onde ele fica no braço.</p>`;
+  $('pDetail').querySelectorAll('.steps button').forEach(b => b.onclick = () => { p.step = +b.dataset.i; p.pos = null; renderProgressoes(); });
+
+  const pos = neckPositions(c.rootPc, c.type, t.iv);
+  $('pPosTitle').textContent = `Onde tocar ${c.name} no braço (casas 0 a 24)`;
+  positionCards($('pPositions'), pos, c.rootPc, shown, p.pos, i => { p.pos = i; renderProgressoes(); if (i !== null) $('board3').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  const v = p.pos !== null ? pos[p.pos] : null;
+  drawBoard($('board3'), 24, { inScale: new Set(c.pcs), names: shown, rootPc: c.rootPc, all: false, exact: v ? v.frets : null });
 }
 
 /* ---------- ABA ESCALAS ---------- */
@@ -165,14 +240,13 @@ function goChord(pc, type) {
 /* ---------- ABA ACORDES ---------- */
 const memo = {};
 const MAX_SHOW = 40;
-const STRING_NAMES = ['6ª corda (a mais grossa)', '5ª corda', '4ª corda', '3ª corda', '2ª corda', '1ª corda (a mais fina)'];
 function renderAcordes() {
   const t = CHORD_TYPES[state.ctype], rootPc = state.croot;
   const key = rootPc + ':' + state.ctype;
   const all = memo[key] || (memo[key] = generateVoicings(rootPc, t.iv));
   const filtered = filterVoicings(all, state.cf), list = filtered.slice(0, MAX_SHOW);
   const pcs = t.iv.map(i => (rootPc + i) % 12);
-  const cn = spelledChord(rootPc, t.iv, state.sharps), names = nameMap(pcs, cn);
+  const cn = spelledChord(rootPc, t.iv, state.sharps, t.letters), names = nameMap(pcs, cn);
   const cg = hasCaged(state.ctype), caged = cg ? cagedShapes(rootPc, state.ctype) : [];
 
   $('chordRoots').innerHTML = Array.from({ length: 12 }, (_, i) =>
@@ -214,7 +288,7 @@ function renderAcordes() {
   drawBoard($('board2'), v ? (v.maxF > 12 ? 24 : 12) : state.frets2, { inScale: new Set(pcs), names, rootPc, all: false, exact: v ? v.frets : null });
 }
 function fillChordSelects() {
-  if (!$('ctype').options.length) Object.entries(CHORD_TYPES).forEach(([k, t]) => $('ctype').add(new Option(t.label, k)));
+  if (!$('ctype').options.length) Object.entries(CHORD_TYPES).filter(([k]) => k !== '5').forEach(([k, t]) => $('ctype').add(new Option(t.label, k)));
   $('ctype').value = state.ctype;
 }
 
@@ -236,12 +310,14 @@ function renderTab() {
   if (state.tab === 'escalas') renderEscalas();
   else if (state.tab === 'campos') renderCampos();
   else if (state.tab === 'acordes') renderAcordes();
+  else if (state.tab === 'guitarra') renderGuitarra();
+  else if (state.tab === 'progressoes') renderProgressoes();
 }
 function setTab(t) {
   state.tab = t;
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
-  ['escalas', 'campos', 'acordes', 'aprender'].forEach(x => $('tab-' + x).hidden = x !== t);
-  $('root').closest('label').hidden = t === 'acordes' || t === 'aprender';
+  ['escalas', 'campos', 'acordes', 'guitarra', 'progressoes', 'aprender'].forEach(x => $('tab-' + x).hidden = x !== t);
+  $('root').closest('label').hidden = t !== 'escalas' && t !== 'campos';
   render(); window.scrollTo(0, 0);
 }
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => setTab(b.dataset.tab));
@@ -251,6 +327,10 @@ $('frets').onchange = e => { state.frets = +e.target.value; render(); };
 $('all').onchange = e => { state.all = e.target.checked; render(); };
 $('frets2').onchange = e => { state.frets2 = +e.target.value; render(); };
 $('ctype').onchange = e => { state.ctype = e.target.value; state.cvoice = null; render(); };
+[['gkind', 'kind'], ['gtri', 'tri'], ['gset', 'set'], ['gext', 'ext'], ['glabels', 'labels']].forEach(([id, k]) =>
+  $(id).onchange = e => { state.g[k] = e.target.value; state.g.pos = null; render(); });
+[['pmode', 'mode'], ['plabels', 'labels']].forEach(([id, k]) =>
+  $(id).onchange = e => { state.p[k] = e.target.value; if (k === 'mode') { state.p.idx = 0; state.p.step = 0; } state.p.pos = null; render(); });
 [['region', 'region'], ['copen', 'open'], ['cbarre', 'barre'], ['cbass', 'bass'], ['cmin', 'min']].forEach(([id, k]) =>
   $(id).onchange = e => { state.cf[k] = k === 'min' ? +e.target.value : e.target.value; state.cvoice = null; render(); });
 
@@ -264,9 +344,10 @@ applyFs();
 
 let lastPer = 0;
 new ResizeObserver(() => {
-  const host = state.tab === 'escalas' ? $('board') : state.tab === 'acordes' ? $('board2') : null;
+  const id = { escalas: 'board', acordes: 'board2', progressoes: 'board3', guitarra: 'board4' }[state.tab];
+  const host = id && $(id);
   if (!host || !host.clientWidth) return;
-  const p = host.clientWidth >= 760 ? 12 : 6;
+  const p = perRowFor(host.clientWidth);
   if (p !== lastPer) { lastPer = p; render(); }
 }).observe(document.body);
 
@@ -282,7 +363,7 @@ function segmentize(id) {
   const sync = () => box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === sel.value));
   sync();
 }
-['frets', 'frets2', 'region', 'copen', 'cbarre', 'cbass', 'cmin'].forEach(segmentize);
+['frets', 'frets2', 'region', 'copen', 'cbarre', 'cbass', 'cmin', 'gkind', 'gtri', 'gset', 'gext', 'glabels', 'pmode', 'plabels'].forEach(segmentize);
 
 // listas longas: menu próprio no lugar da lista nativa do navegador
 const dropdowns = [];

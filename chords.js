@@ -97,3 +97,78 @@ export function cagedShapes(rootPc, type) {
       fingers: barre ? 1 + used.filter(f => f > shift).length : used.length, hasOpen: frets.includes(0) };
   }).sort((a, b) => a.minF - b.minF);
 }
+
+/* ---------- formas espalhadas pelo braço (até a casa 24) ---------- */
+export function shapeOf(frets, extra = {}) {
+  const used = frets.filter(f => f > 0);
+  const minF = used.length ? Math.min(...used) : 0, maxF = used.length ? Math.max(...used) : 0;
+  return { frets, minF, maxF, barre: false, fingers: used.length, hasOpen: frets.includes(0), ...extra };
+}
+const key = v => v.frets.join(',');
+
+// a mesma forma 12 casas acima (cordas soltas viram pestana na casa 12)
+function up12(v) {
+  const frets = v.frets.map(f => (f < 0 ? -1 : f + 12));
+  const open = v.frets.map((f, i) => (f === 0 ? i : -1)).filter(i => i >= 0);
+  const out = shapeOf(frets, { shape: v.shape, label: v.label });
+  if (v.barre) Object.assign(out, { barre: true, barreFrom: v.barreFrom, barreTo: v.barreTo, fingers: v.fingers });
+  else if (open.length >= 2) Object.assign(out, { barre: true, barreFrom: open[0], barreTo: open[open.length - 1], fingers: v.fingers + 1 });
+  return out;
+}
+function withOctaves(list) {
+  const seen = new Set(), out = [];
+  for (const v of list) {
+    for (const x of [v, v.maxF + 12 <= 24 ? up12(v) : null]) if (x && !seen.has(key(x))) { seen.add(key(x)); out.push(x); }
+  }
+  return out.sort((a, b) => a.minF - b.minF || a.maxF - b.maxF);
+}
+
+// acorde "completo": CAGED quando existe; senão as melhores formas, uma por região
+export function neckPositions(rootPc, type, iv) {
+  if (CAGED[type]) return withOctaves(cagedShapes(rootPc, type));
+  const best = [];
+  for (const v of generateVoicings(rootPc, iv)) {
+    if (!v.bassIsRoot) continue;
+    if (best.every(b => Math.abs(b.minF - v.minF) >= 3)) best.push(v);
+    if (best.length >= 5) break;
+  }
+  return withOctaves(best);
+}
+
+// power chords com a nota base na 6ª, 5ª ou 4ª corda
+const POWER = [
+  { s: 0, tpl: [0, 2, 2, -1, -1, -1], label: 'base na 6ª corda' },
+  { s: 1, tpl: [-1, 0, 2, 2, -1, -1], label: 'base na 5ª corda' },
+  { s: 2, tpl: [-1, -1, 0, 2, 3, -1], label: 'base na 4ª corda' },
+];
+export function powerChords(rootPc) {
+  const out = [];
+  for (const p of POWER) {
+    const f0 = (rootPc - TUNING[p.s] + 12) % 12;
+    for (const f of [f0, f0 + 12]) {
+      const frets = p.tpl.map(x => (x < 0 ? -1 : x + f));
+      if (Math.max(...frets) <= 24) out.push(shapeOf(frets, { label: p.label }));
+    }
+  }
+  return out.sort((a, b) => a.minF - b.minF || a.maxF - b.maxF);
+}
+
+// tríades em 3 cordas vizinhas, em todo o braço
+const INVERSION = ['fundamental', '1ª inversão', '2ª inversão'];
+export function stringSetTriads(rootPc, iv, strings) {
+  const pcs = iv.map(i => (rootPc + i) % 12);
+  const opts = strings.map(s => { const o = []; for (let f = 0; f <= 24; f++) if (pcs.includes((TUNING[s] + f) % 12)) o.push(f); return o; });
+  const out = [];
+  for (const a of opts[0]) for (const b of opts[1]) for (const c of opts[2]) {
+    const fr = [a, b, c], fretted = fr.filter(f => f > 0);
+    if (fretted.length && Math.max(...fretted) - Math.min(...fretted) > 3) continue;
+    if (fr.includes(0) && fretted.length && Math.max(...fretted) > 4) continue; // solta + casa alta não dá
+    const tones = strings.map((s, i) => (TUNING[s] + fr[i]) % 12);
+    if (new Set(tones).size !== 3) continue;
+    const frets = [-1, -1, -1, -1, -1, -1];
+    strings.forEach((s, i) => { frets[s] = fr[i]; });
+    const bass = tones[strings.indexOf(Math.min(...strings))];
+    out.push(shapeOf(frets, { label: INVERSION[pcs.indexOf(bass)] }));
+  }
+  return out.sort((a, b) => a.minF - b.minF || a.maxF - b.maxF);
+}
