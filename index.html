@@ -49,8 +49,10 @@
       <div class="opts">
         <label>Escala <select id="scale"></select></label>
         <label>Casas <select id="frets"><option value="12">12</option><option value="24">24</option></select></label>
+        <label>Nomes das notas <select id="hide"><option value="0">Mostrar</option><option value="1">Esconder (treino)</option></select></label>
         <label class="switch"><input type="checkbox" id="all"> Mostrar todas as notas</label>
       </div>
+      <div id="trainBar" class="box train" hidden></div>
       <div class="board-wrap"><div id="board"></div></div>
       <p class="legend"><i class="d o"></i> nota inicial (tônica) <i class="d b"></i> notas da escala <i class="d g"></i> nota escolhida</p>
       <div id="selInfo" class="box"></div>
@@ -146,6 +148,8 @@
       <p>Escolha a nota lá em cima (por exemplo Fá, que no aplicativo aparece como F). A aba <b>Escalas</b> mostra as escalas dessa nota e desenha as notas no braço. A aba <b>Campos</b> mostra os acordes que combinam. A aba <b>Acordes</b> mostra como tocar cada acorde no violão ou guitarra.</p></details>
     <details><summary>Letra maior e tema claro</summary>
       <p>Os botões <b>A-</b> e <b>A+</b> no alto da tela diminuem e aumentam a letra. O botão da <b>lua/sol</b> troca entre o tema escuro e o tema claro (fundo branco), que pode ser mais fácil de ler durante o dia. O aplicativo lembra da sua escolha.</p></details>
+    <details><summary>Treinar as notas do braço</summary>
+      <p>Na aba <b>Escalas</b>, em "Nomes das notas", escolha <b>Esconder (treino)</b>. As bolinhas ficam sem o nome: tente dizer qual é a nota e depois toque nela para conferir (ela mostra o nome e toca o som). Marque "Mostrar todas as notas" para treinar o braço inteiro. O botão "Esconder de novo" recomeça.</p></details>
     <details><summary>Som</summary>
       <p>Toque em qualquer bolinha do braço para ouvir aquela nota, na altura certa da corda e da casa. Ao tocar num desenho de acorde, o aplicativo toca o acorde como uma batida de violão. Os botões <b>Ouvir</b> tocam a escala ou o acorde, e na aba Progressões o botão <b>Tocar a progressão</b> toca a sequência inteira, mostrando cada acorde no braço. O botão do alto-falante, lá em cima, liga e desliga o som. No iPhone, o som não sai se o botão lateral de silencioso estiver ligado.</p></details>
     <details><summary>Nomes das notas: letras e Dó Ré Mi</summary>

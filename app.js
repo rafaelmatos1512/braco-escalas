@@ -5,7 +5,7 @@ import { generateVoicings, filterVoicings, cagedShapes, hasCaged, neckPositions,
 
 const $ = id => document.getElementById(id);
 const state = {
-  tab: 'escalas', fsel: null, root: 5, scale: 'Maior', frets: 12, sharps: true, all: false, sel: null,
+  tab: 'escalas', fsel: null, hide: false, revealed: new Set(), revealKey: '', root: 5, scale: 'Maior', frets: 12, sharps: true, all: false, sel: null,
   frets2: 24, croot: 0, ctype: 'maior', cvoice: null,
   cf: { region: 'all', open: 'any', barre: 'any', bass: 'root', min: 4 },
   g: { root: 4, kind: 'pow', tri: 'maior', set: '5,4,3', ext: '7', pos: null, labels: 'notes' },
@@ -66,17 +66,22 @@ function drawRow(host, from, to, o) {
         op = o.hl && !hi ? .25 : on ? 1 : .8;
       }
       const cx = f === 0 ? LEFT - 28 : LEFT + (f - from + 0.5) * FW;
-      const m = midiAt(s, f);
-      el('circle', { cx, cy: y, r: 15, fill, opacity: op, class: 'nt', 'data-m': m }, svg);
-      el('text', { x: cx, y: y + 5, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 700, class: 'nt', 'data-m': m,
-        fill: on ? '#0f172a' : 'var(--mut)' }, svg).textContent = (o.names && o.names.get(nt)) || nn(nt);
+      const m = midiAt(s, f), sf = s + ',' + f;
+      el('circle', { cx, cy: y, r: 15, fill, opacity: op, class: 'nt', 'data-m': m, 'data-sf': sf }, svg);
+      el('text', { x: cx, y: y + 5, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 700, class: 'nt', 'data-m': m, 'data-sf': sf,
+        fill: on ? '#0f172a' : 'var(--mut)' }, svg).textContent = o.hide && !o.revealed.has(sf) ? '' : (o.names && o.names.get(nt)) || nn(nt);
     }
   }
 }
 const perRowFor = (w, frets = 24) => (w >= 1400 && frets > 12 ? 24 : w >= 760 ? 12 : 6);
 function drawBoard(host, frets, o) {
   host.innerHTML = '';
-  host.onclick = e => { const m = e.target.getAttribute && e.target.getAttribute('data-m'); if (m) playNote(+m); };
+  host.onclick = e => {
+    const m = e.target.getAttribute && e.target.getAttribute('data-m');
+    if (!m) return;
+    playNote(+m);
+    if (o.onReveal) o.onReveal(e.target.getAttribute('data-sf'));
+  };
   const perRow = perRowFor(host.clientWidth, frets);
   for (let from = 1; from <= frets; from += perRow)
     drawRow(host, from, Math.min(from + perRow - 1, frets), o);
@@ -216,8 +221,19 @@ function renderEscalas() {
     `<p>Receita (de uma nota para a próxima): ${formulaText(state.scale)}. Um tom são 2 casas, um semitom é 1 casa.</p>` +
     `<p>${playBtn('playScale', 'Ouvir a escala')}</p>`;
   $('playScale').onclick = () => { let m = 48 + state.root; sequence([m, ...SCALES[state.scale].map(i => (m += i))]); };
+  const rk = [state.root, state.scale, state.frets, state.all, state.sharps].join('|');
+  if (rk !== state.revealKey) { state.revealKey = rk; state.revealed.clear(); }
   drawBoard($('board'), state.frets, {
-    inScale: new Set(notes), names, hl: state.sel ? state.sel.notes : null, rootPc: state.root, all: state.all });
+    inScale: new Set(notes), names, hl: state.sel ? state.sel.notes : null, rootPc: state.root, all: state.all,
+    hide: state.hide, revealed: state.revealed,
+    onReveal: state.hide ? k => { if (!state.revealed.has(k)) { state.revealed.add(k); keepScroll(renderEscalas); } } : null });
+  $('trainBar').hidden = !state.hide;
+  if (state.hide) {
+    const total = $('board').querySelectorAll('circle.nt').length, seen = state.revealed.size;
+    $('trainBar').innerHTML = `<p><b>Modo treino:</b> toque numa bolinha para ver o nome da nota e ouvir. ${seen ? `Já revelou ${seen} de ${total}.` : 'Tente acertar antes de tocar!'}</p>` +
+      (seen ? '<p><button type="button" class="link" id="hideAgain">Esconder de novo</button></p>' : '');
+    if (seen) $('hideAgain').onclick = () => { state.revealed.clear(); keepScroll(renderEscalas); };
+  }
 
   const labels = scaleDegreeLabels(state.root, state.scale, state.sharps);
   if (state.sel && state.sel.scale === state.scale) {
@@ -403,6 +419,7 @@ $('root').onchange = e => { state.root = +e.target.value; state.sel = null; stat
 $('sharps').onchange = e => { state.sharps = e.target.checked; fillRoots(); render(); };
 $('frets').onchange = e => { state.frets = +e.target.value; render(); };
 $('all').onchange = e => { state.all = e.target.checked; render(); };
+$('hide').onchange = e => { state.hide = e.target.value === '1'; state.revealed.clear(); render(); };
 $('frets2').onchange = e => { state.frets2 = +e.target.value; render(); };
 $('ctype').onchange = e => { state.ctype = e.target.value; state.cvoice = null; render(); };
 [['gkind', 'kind'], ['gtri', 'tri'], ['gset', 'set'], ['gext', 'ext'], ['glabels', 'labels']].forEach(([id, k]) =>
@@ -461,7 +478,7 @@ function segmentize(id) {
   const sync = () => box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === sel.value));
   sync();
 }
-['frets', 'frets2', 'region', 'copen', 'cbarre', 'cbass', 'cmin', 'gkind', 'gtri', 'gset', 'gext', 'glabels', 'pmode', 'plabels'].forEach(segmentize);
+['hide', 'frets', 'frets2', 'region', 'copen', 'cbarre', 'cbass', 'cmin', 'gkind', 'gtri', 'gset', 'gext', 'glabels', 'pmode', 'plabels'].forEach(segmentize);
 
 // listas longas: menu próprio no lugar da lista nativa do navegador
 const dropdowns = [];

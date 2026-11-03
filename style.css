@@ -231,3 +231,4 @@ svg .nt{cursor:pointer}
 }
 @media (min-width:761px) and (max-width:899px){ .fpanel{bottom:12px} }
 .link{font:inherit;background:none;border:0;color:var(--acc);font-weight:700;cursor:pointer;padding:8px 4px;text-decoration:underline;text-underline-offset:3px}
+.train{border-color:var(--acc)}
