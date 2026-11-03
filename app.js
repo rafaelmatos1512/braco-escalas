@@ -153,7 +153,7 @@ function renderGuitarra() {
   $('gInfo').innerHTML = `<p><b>${cn[0]}${t.suffix}</b> — ${ptOf(cn[0])}, ${t.label.toLowerCase()}</p>` +
     `<p>Notas: <b>${cn.join(' - ')}</b> &nbsp;(${intervalNames(t).join(' - ')})</p><p>${G_INFO[g.kind] || t.desc}</p>` +
     `<p>${list.length} formas pelo braço, da casa mais baixa para a mais alta.</p><p>${playBtn('gPlay', 'Ouvir')}</p>`;
-  positionCards($('gPositions'), list, g.root, shown, g.pos, i => { g.pos = i; renderGuitarra(); if (i !== null) $('gSel').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  positionCards($('gPositions'), list, g.root, shown, g.pos, i => { g.pos = i; renderGuitarra(); });
   const v = g.pos !== null ? list[g.pos] : null;
   $('gPlay').onclick = () => strumV(v || list[0]);
   $('gSel').innerHTML = v ? `<p><b>Como tocar:</b></p>${howTo(v, names)}<p>Toque na forma de novo para ver todas as posições.</p>`
@@ -197,7 +197,7 @@ function renderProgressoes() {
 
   const pos = neckPositions(c.rootPc, c.type, t.iv);
   $('pPosTitle').textContent = `Onde tocar ${c.name} no braço (casas 0 a 24)`;
-  positionCards($('pPositions'), pos, c.rootPc, shown, p.pos, i => { p.pos = i; renderProgressoes(); if (i !== null) $('board3').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  positionCards($('pPositions'), pos, c.rootPc, shown, p.pos, i => { p.pos = i; renderProgressoes(); });
   const v = p.pos !== null ? pos[p.pos] : null;
   drawBoard($('board3'), 24, { inScale: new Set(c.pcs), names: shown, rootPc: c.rootPc, all: false, exact: v ? v.frets : null });
 }
@@ -242,7 +242,6 @@ function renderEscalas() {
     state.sel = same ? null : { scale: name, idx: i, notes: [scaleNotes(state.root, name)[i]] };
     if (!same) playNote(48 + state.root + ((state.sel.notes[0] - state.root + 12) % 12));
     render();
-    $('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 }
 
@@ -265,7 +264,6 @@ function renderCampos() {
     state.fsel = same ? null : { scale: name, idx: i };
     if (!same) { const f = harmonicField(state.root, name, state.sharps)[i]; strumV(bestVoicing(f.notes[0], f.type)); }
     renderCampos();
-    if (!same) $('fdetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
   if (sel) {
     const f = harmonicField(state.root, sel.scale, state.sharps)[sel.idx];
@@ -335,7 +333,6 @@ function renderAcordes() {
     const id = c.dataset.id; state.cvoice = state.cvoice === id ? null : id;
     if (state.cvoice) strum((id[0] === 'c' ? caged : list)[+id.slice(1)].frets);
     renderAcordes();
-    if (state.cvoice !== null) $('voiceInfo').scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
   const id = state.cvoice;
