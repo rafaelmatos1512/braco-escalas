@@ -231,8 +231,11 @@ function renderEscalas() {
   $('trainBar').hidden = !state.hide;
   if (state.hide) {
     const total = $('board').querySelectorAll('circle.nt').length, seen = state.revealed.size;
-    $('trainBar').innerHTML = `<p><b>Modo treino:</b> toque numa bolinha para ver o nome da nota e ouvir. ${seen ? `Já revelou ${seen} de ${total}.` : 'Tente acertar antes de tocar!'}</p>` +
-      (seen ? '<p><button type="button" class="link" id="hideAgain">Esconder de novo</button></p>' : '');
+    $('trainBar').innerHTML = `<p><b>Modo treino ligado.</b> Os nomes das notas estão escondidos.</p>` +
+      `<ol class="steps-train"><li>Olhe uma bolinha e diga qual nota você acha que é.</li><li>Toque nela: o nome aparece e a nota toca.</li><li>Confira se acertou e passe para a próxima.</li></ol>` +
+      `<p><b>${seen ? `Você já revelou ${seen} de ${total} notas.` : `São ${total} notas para descobrir.`}</b> ` +
+      `${state.all ? '' : 'Para treinar o braço inteiro, marque "Mostrar todas as notas". '}Para sair, toque em "Mostrar" em Nomes das notas.</p>` +
+      (seen ? '<p><button type="button" class="link" id="hideAgain">Esconder de novo (recomeçar)</button></p>' : '');
     if (seen) $('hideAgain').onclick = () => { state.revealed.clear(); keepScroll(renderEscalas); };
   }
 

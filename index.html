@@ -39,18 +39,18 @@
 </header>
 <main>
   <div class="bar">
-    <label>Nota <select id="root"></select></label>
-    <label class="switch" title="Desligado mostra bemóis (b)"><input type="checkbox" id="sharps" checked> Sustenidos (#)</label>
+    <label>Nota <select id="root"></select><small class="hint">A nota de partida. Em Escalas é onde a escala começa; em Campos é o tom.</small></label>
+    <div class="sw-wrap"><label class="switch" title="Desligado mostra bemóis (b)"><input type="checkbox" id="sharps" checked> Sustenidos (#)</label><small class="hint">Ligado: nomes com # (C#, F#). Desligado: com b (Db, Gb). É a mesma nota com outro nome.</small></div>
   </div>
   <section id="tab-escalas">
     <div id="detail">
       <h2 id="title"></h2>
       <div id="scaleInfo" class="box"></div>
       <div class="opts">
-        <label>Escala <select id="scale"></select></label>
-        <label>Casas <select id="frets"><option value="12">12</option><option value="24">24</option></select></label>
-        <label>Nomes das notas <select id="hide"><option value="0">Mostrar</option><option value="1">Esconder (treino)</option></select></label>
-        <label class="switch"><input type="checkbox" id="all"> Mostrar todas as notas</label>
+        <label>Escala <select id="scale"></select><small class="hint">Cada escala tem um som: Maior soa alegre, Menor soa triste, Pentatônica e Blues são as dos solos.</small></label>
+        <label>Casas <select id="frets"><option value="12">12</option><option value="24">24</option></select><small class="hint">Quantas casas do braço aparecem. 12 vai até a metade do braço; 24 mostra o braço inteiro da guitarra.</small></label>
+        <label>Nomes das notas <select id="hide"><option value="0">Mostrar</option><option value="1">Esconder (treino)</option></select><small class="hint">"Esconder" liga o modo treino: as bolinhas ficam sem nome e você toca para conferir.</small></label>
+        <div class="sw-wrap"><label class="switch"><input type="checkbox" id="all"> Mostrar todas as notas</label><small class="hint">Mostra também as notas que não são da escala (em cinza). Bom para treinar o braço inteiro.</small></div>
       </div>
       <div id="trainBar" class="box train" hidden></div>
       <div class="board-wrap"><div id="board"></div></div>
@@ -75,22 +75,27 @@
   <section id="tab-acordes" hidden>
     <div class="layout">
       <aside><div class="controls">
-        <label>Tipo de acorde <select id="ctype"></select></label>
+        <label>Tipo de acorde <select id="ctype"></select><small class="hint">Maior soa alegre, Menor soa triste; 7, 9 e os outros soam mais ricos. A explicação de cada um aparece no quadro abaixo.</small></label>
         <label>Região do braço
-          <select id="region"><option value="all">Qualquer</option><option value="1">Início (1–4)</option><option value="2">Meio (5–8)</option><option value="3">Agudo (9–12)</option><option value="4">Mais agudo (13+)</option></select></label>
+          <select id="region"><option value="all">Qualquer</option><option value="1">Início (1–4)</option><option value="2">Meio (5–8)</option><option value="3">Agudo (9–12)</option><option value="4">Mais agudo (13+)</option></select><small class="hint">Em que parte do braço a mão fica. Início = perto da cabeça do violão; Mais agudo = perto do corpo.</small></label>
         <label>Usar cordas soltas?
-          <select id="copen"><option value="any">Sim</option><option value="without">Não</option></select></label>
+          <select id="copen"><option value="any">Sim</option><option value="without">Não</option></select><small class="hint">Corda solta é a corda tocada sem apertar nenhuma casa. Em "Não", aparecem só formas sem corda solta.</small></label>
         <label>Usar pestana?
-          <select id="cbarre"><option value="any">Sim</option><option value="without">Não</option></select></label>
+          <select id="cbarre"><option value="any">Sim</option><option value="without">Não</option></select><small class="hint">Pestana é deitar um dedo sobre várias cordas. Em "Não", somem as formas com pestana, que são mais difíceis.</small></label>
         <label>Nota mais grave
-          <select id="cbass"><option value="root">Nota do acorde</option><option value="any">Qualquer (inversão)</option></select></label>
+          <select id="cbass"><option value="root">Nota do acorde</option><option value="any">Qualquer (inversão)</option></select><small class="hint">Qual nota soa mais grave. "Nota do acorde" é o jeito normal. "Qualquer" mostra também as inversões (ex.: C com o E embaixo).</small></label>
         <label>Cordas tocadas
-          <select id="cmin"><option value="4">4 ou mais</option><option value="5">5 ou mais</option><option value="6">Todas as 6</option></select></label>
+          <select id="cmin"><option value="4">4 ou mais</option><option value="5">5 ou mais</option><option value="6">Todas as 6</option></select><small class="hint">Quantas cordas soam juntas. Mais cordas = som mais cheio; menos cordas = mais fácil de tocar.</small></label>
       </div></aside>
       <div class="results">
         <h3 class="first">Escolha a nota do acorde (as 12 notas)</h3>
         <div id="chordRoots" class="roots"></div>
         <div id="chordInfo" class="box"></div>
+        <div class="legend-box"><b>Como ler os desenhos:</b> as linhas em pé são as cordas (a mais grossa à esquerda) e as deitadas são as casas.
+  <span class="lg"><i class="lx">×</i> não tocar a corda</span> <span class="lg"><i class="lo"></i> tocar a corda solta</span>
+  <span class="lg"><i class="ld or"></i> nota principal</span> <span class="lg"><i class="ld bl"></i> outras notas</span>
+  <span class="lg"><i class="lb"></i> pestana</span> <span class="lg"><i class="ln">5ª</i> casa onde o desenho começa</span>
+  <span class="lg">Toque num desenho para ouvir e ver no braço.</span></div>
         <div id="cagedWrap" class="box">
           <h3 class="first">Sistema CAGED — o mesmo acorde em 5 lugares do braço</h3>
           <p>As 5 formas são os acordes abertos de <b>C, A, G, E e D</b> (daí o nome CAGED). Cada desenho é arrastado pelo braço até soar a nota escolhida, usando a pestana no lugar das cordas soltas. Elas aparecem em ordem, do início do braço para o fim, e se encaixam uma depois da outra. (Só para acordes maiores e menores.)</p>
@@ -99,8 +104,9 @@
         <h3>Todas as formas encontradas</h3>
         <div id="voicings" class="grid"></div>
         <div id="voiceInfo" class="box" hidden></div>
-        <div class="opts"><label>Braço <select id="frets2"><option value="24">Todo (24 casas)</option><option value="12">12 casas</option></select></label></div>
+        <div class="opts"><label>Braço <select id="frets2"><option value="24">Todo (24 casas)</option><option value="12">12 casas</option></select><small class="hint">Quantas casas mostrar no braço lá embaixo.</small></label></div>
         <div class="board-wrap" id="board2wrap" hidden><div id="board2"></div></div>
+        <p class="legend"><i class="d o"></i> nota principal do acorde <i class="d b"></i> outras notas do acorde · toque numa bolinha para ouvir</p>
       </div>
     </div>
   </section>
@@ -108,20 +114,26 @@
   <section id="tab-guitarra" hidden>
     <div class="layout">
       <aside><div class="controls">
-        <label>Tipo <select id="gkind"><option value="pow">Power chord (5)</option><option value="tri">Tríades (3 cordas)</option><option value="ext">Acordes com tensão</option></select></label>
-        <label id="gtriL">Tríade <select id="gtri"><option value="maior">Maior</option><option value="menor">Menor</option><option value="dim">Diminuta</option><option value="aug">Aumentada</option></select></label>
-        <label id="gsetL">Cordas <select id="gset"><option value="5,4,3">1ª-2ª-3ª (agudas)</option><option value="4,3,2">2ª-3ª-4ª</option><option value="3,2,1">3ª-4ª-5ª</option><option value="2,1,0">4ª-5ª-6ª (graves)</option></select></label>
-        <label id="gextL">Acorde <select id="gext"><option value="7">7</option><option value="m7">m7</option><option value="maj7">maj7</option><option value="9">9</option><option value="7#9">7(#9) Hendrix</option><option value="add9">add9</option><option value="sus4">sus4</option><option value="6/9">6/9</option><option value="m7b5">m7(b5)</option></select></label>
-        <label>No braço mostrar <select id="glabels"><option value="notes">Notas</option><option value="iv">Intervalos</option></select></label>
+        <label>Tipo <select id="gkind"><option value="pow">Power chord (5)</option><option value="tri">Tríades (3 cordas)</option><option value="ext">Acordes com tensão</option></select><small class="hint">Power chord: só 2 notas, o som forte do rock. Tríades: acorde em 3 cordas, som leve. Com tensão: acordes de 4 ou 5 notas (7, 9…).</small></label>
+        <label id="gtriL">Tríade <select id="gtri"><option value="maior">Maior</option><option value="menor">Menor</option><option value="dim">Diminuta</option><option value="aug">Aumentada</option></select><small class="hint">Maior (alegre), menor (triste), diminuta (tensa) ou aumentada (som "suspenso").</small></label>
+        <label id="gsetL">Cordas <select id="gset"><option value="5,4,3">1ª-2ª-3ª (agudas)</option><option value="4,3,2">2ª-3ª-4ª</option><option value="3,2,1">3ª-4ª-5ª</option><option value="2,1,0">4ª-5ª-6ª (graves)</option></select><small class="hint">Em quais 3 cordas tocar a tríade. As agudas são as mais finas.</small></label>
+        <label id="gextL">Acorde <select id="gext"><option value="7">7</option><option value="m7">m7</option><option value="maj7">maj7</option><option value="9">9</option><option value="7#9">7(#9) Hendrix</option><option value="add9">add9</option><option value="sus4">sus4</option><option value="6/9">6/9</option><option value="m7b5">m7(b5)</option></select><small class="hint">Qual acorde mostrar. O que cada um significa aparece no quadro com o nome do acorde.</small></label>
+        <label>No braço mostrar <select id="glabels"><option value="notes">Notas</option><option value="iv">Intervalos</option></select><small class="hint">"Notas" mostra o nome (C, E, G). "Intervalos" mostra o papel de cada nota: 1 é a base, 3 a terça, 5 a quinta, b7 a sétima.</small></label>
       </div></aside>
       <div class="results">
         <div class="box"><p><b>Acordes de guitarrista.</b> Formas que guitarristas usam muito, espalhadas pelo braço inteiro (até a casa 24). Toque numa forma para ver só ela no braço.</p></div>
         <h3 class="first">Nota do acorde</h3>
         <div id="gRoots" class="roots"></div>
         <div id="gInfo" class="box"></div>
+        <div class="legend-box"><b>Como ler os desenhos:</b> as linhas em pé são as cordas (a mais grossa à esquerda) e as deitadas são as casas.
+  <span class="lg"><i class="lx">×</i> não tocar a corda</span> <span class="lg"><i class="lo"></i> tocar a corda solta</span>
+  <span class="lg"><i class="ld or"></i> nota principal</span> <span class="lg"><i class="ld bl"></i> outras notas</span>
+  <span class="lg"><i class="lb"></i> pestana</span> <span class="lg"><i class="ln">5ª</i> casa onde o desenho começa</span>
+  <span class="lg">Toque num desenho para ouvir e ver no braço.</span></div>
         <div id="gPositions" class="grid"></div>
         <div id="gSel" class="box"></div>
         <div class="board-wrap"><div id="board4"></div></div>
+        <p class="legend"><i class="d o"></i> nota principal do acorde <i class="d b"></i> outras notas do acorde · toque numa bolinha para ouvir</p>
       </div>
     </div>
   </section>
@@ -131,13 +143,19 @@
     <h3 class="first">Tom da música</h3>
     <div id="pKeys" class="roots"></div>
     <div class="opts">
-      <label>Modo <select id="pmode"><option value="maior">Maior (alegre)</option><option value="menor">Menor (triste)</option></select></label>
-      <label>No braço mostrar <select id="plabels"><option value="notes">Notas</option><option value="iv">Intervalos</option></select></label>
+      <label>Modo <select id="pmode"><option value="maior">Maior (alegre)</option><option value="menor">Menor (triste)</option></select><small class="hint">Maior soa alegre, menor soa triste. A lista de progressões muda conforme o modo.</small></label>
+      <label>No braço mostrar <select id="plabels"><option value="notes">Notas</option><option value="iv">Intervalos</option></select><small class="hint">"Notas" mostra o nome (C, E, G). "Intervalos" mostra o papel de cada nota: 1 é a base, 3 a terça, 5 a quinta.</small></label>
     </div>
     <h3>Progressões mais usadas — toque numa</h3>
     <div id="pList" class="plist"></div>
     <div id="pDetail" class="box"></div>
     <div class="board-wrap"><div id="board3"></div></div>
+    <p class="legend"><i class="d o"></i> nota principal do acorde <i class="d b"></i> outras notas do acorde · toque numa bolinha para ouvir</p>
+    <div class="legend-box"><b>Como ler os desenhos:</b> as linhas em pé são as cordas (a mais grossa à esquerda) e as deitadas são as casas.
+  <span class="lg"><i class="lx">×</i> não tocar a corda</span> <span class="lg"><i class="lo"></i> tocar a corda solta</span>
+  <span class="lg"><i class="ld or"></i> nota principal</span> <span class="lg"><i class="ld bl"></i> outras notas</span>
+  <span class="lg"><i class="lb"></i> pestana</span> <span class="lg"><i class="ln">5ª</i> casa onde o desenho começa</span>
+  <span class="lg">Toque num desenho para ouvir e ver no braço.</span></div>
     <h3 id="pPosTitle">Onde tocar este acorde no braço (casas 0 a 24)</h3>
     <div id="pPositions" class="grid"></div>
   </section>
@@ -212,6 +230,61 @@
         <li><b>Tocar a progressão</b>: toca a sequência inteira, acendendo cada acorde. <b>Parar</b> interrompe.</li>
       </ol>
       <p><button type="button" class="go-tab" data-go="progressoes">Abrir a tela Progressões →</button></p></details>
+
+    <details class="guide"><summary><span class="gi" data-icon="escalas"></span>Modo treino — como treinar as notas do braço</summary>
+      <p>Serve para decorar onde fica cada nota no braço.</p>
+      <ol>
+        <li>Abra a tela <b>Escalas</b>.</li>
+        <li>Escolha uma escala fácil para começar, por exemplo <b>Nota C</b> e <b>Escala Maior</b>, com <b>12 casas</b>.</li>
+        <li>Em <b>Nomes das notas</b>, toque em <b>Esconder (treino)</b>. As bolinhas ficam vazias, sem o nome.</li>
+        <li>Olhe uma bolinha e diga em voz alta qual nota você acha que é.</li>
+        <li><b>Toque na bolinha</b>: o nome aparece e a nota toca. Confira se acertou.</li>
+        <li>Continue com as outras. O quadro em cima do braço mostra quantas você já revelou.</li>
+        <li><b>Esconder de novo</b> apaga os nomes revelados para treinar outra vez.</li>
+        <li>Quando estiver fácil, marque <b>Mostrar todas as notas</b>: aí o treino vale para o braço inteiro, com todas as notas.</li>
+        <li>Para sair do treino, em <b>Nomes das notas</b> toque em <b>Mostrar</b>.</li>
+      </ol>
+      <p>Dica: trocar de escala, de nota ou de número de casas também recomeça o treino.</p>
+      <p><button type="button" class="go-tab" data-go="escalas">Abrir a tela Escalas →</button></p></details>
+
+    <details class="guide"><summary><span class="gi" data-icon="acordes"></span>Filtros da tela Acordes — para que serve cada um</summary>
+      <ul>
+        <li><b>Tipo de acorde</b>: maior, menor, com sétima etc. Cada tipo tem um som; a explicação aparece no quadro com o nome do acorde.</li>
+        <li><b>Região do braço</b>: mostra só as formas de uma parte do braço. "Início" é perto da cabeça do violão (casas 1 a 4); "Mais agudo" é perto do corpo.</li>
+        <li><b>Usar cordas soltas?</b> "Sim" mostra todas as formas. "Não" esconde as que tocam corda sem apertar.</li>
+        <li><b>Usar pestana?</b> "Sim" mostra todas. "Não" esconde as formas com pestana (um dedo deitado sobre várias cordas), que são mais difíceis.</li>
+        <li><b>Nota mais grave</b>: "Nota do acorde" é o normal (a nota que dá nome ao acorde fica embaixo). "Qualquer" mostra também as inversões.</li>
+        <li><b>Cordas tocadas</b>: quantas cordas soam. "Todas as 6" dá o som mais cheio; "4 ou mais" inclui formas mais fáceis.</li>
+        <li><b>Braço</b>: quantas casas aparecem no desenho grande do braço, lá embaixo.</li>
+      </ul>
+      <p>Se aparecer "Nenhuma forma com esses filtros", volte algum filtro para "Sim" ou "Qualquer".</p>
+      <p><button type="button" class="go-tab" data-go="acordes">Abrir a tela Acordes →</button></p></details>
+
+    <details class="guide"><summary><span class="gi" data-icon="acordes"></span>Como ler os desenhos de acorde</summary>
+      <ul>
+        <li>As <b>linhas em pé</b> são as 6 cordas: a mais grossa (6ª, Mi grave) fica à esquerda, a mais fina (1ª) à direita.</li>
+        <li>As <b>linhas deitadas</b> são as casas. A linha grossa em cima é o começo do braço.</li>
+        <li>As <b>bolinhas</b> mostram onde apertar. A letra dentro é a nota. A <b>laranja</b> é a nota principal do acorde.</li>
+        <li><b>×</b> em cima da corda: não tocar essa corda. <b>O</b> em cima: tocar a corda solta, sem apertar.</li>
+        <li><b>Faixa azul</b> deitada: pestana, um dedo apoiado sobre várias cordas na mesma casa.</li>
+        <li><b>Número ao lado</b> (por exemplo 5ª): o desenho começa na casa 5, e não no começo do braço.</li>
+        <li>Embaixo do desenho aparece a casa e quantos dedos usa. Tocando no desenho, aparece também o passo a passo corda por corda.</li>
+      </ul></details>
+
+    <details class="guide"><summary><span class="gi" data-icon="aprender"></span>Perguntas comuns</summary>
+      <ul>
+        <li><b>Não sai som.</b> Veja se o alto-falante no alto da tela está ligado (sem o X) e se o volume do aparelho está alto. No iPhone, confira a chave lateral de silencioso.</li>
+        <li><b>A letra está pequena.</b> Toque em <b>A+</b> no alto da tela, quantas vezes quiser. <b>A-</b> diminui.</li>
+        <li><b>A tela está escura demais.</b> Toque na <b>lua</b> no alto da tela para o tema claro. Tocando de novo (no sol), volta ao escuro.</li>
+        <li><b>Toquei num acorde e o braço mostra só uma forma.</b> Toque no mesmo desenho de novo para voltar a ver todas as notas.</li>
+        <li><b>Apareceu "Nenhuma forma com esses filtros".</b> Algum filtro está muito apertado. Volte "Usar cordas soltas?" e "Usar pestana?" para "Sim" e "Região do braço" para "Qualquer".</li>
+        <li><b>Por que às vezes aparece Bb e às vezes A#?</b> É a mesma nota com dois nomes; o aplicativo usa o nome certo para cada escala. Veja "Por que às vezes aparece Bb e às vezes A#?" mais abaixo.</li>
+        <li><b>O que é o número romano (I, IV, V) embaixo dos acordes?</b> É a posição do acorde na escala. Maiúsculo é acorde maior, minúsculo é menor.</li>
+        <li><b>Onde escolho a nota na tela Acordes?</b> Nos 12 botões (C, C#/Db, D…) logo acima da explicação do acorde.</li>
+        <li><b>Como volto ao começo da tela?</b> Role para cima, ou toque de novo no nome da tela na barra de telas.</li>
+        <li><b>O aplicativo atualiza sozinho?</b> Sim. Com internet, ao abrir, ele já pega a versão nova. Se parecer antigo, feche e abra de novo.</li>
+        <li><b>Funciona sem internet?</b> Sim, depois de aberto uma vez com internet.</li>
+      </ul></details>
 
     <details class="guide"><summary><span class="gi" data-icon="aprender"></span>Dicas</summary>
       <ul>
