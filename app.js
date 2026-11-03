@@ -550,6 +550,44 @@ document.querySelectorAll('.gi').forEach(s => {
 });
 document.querySelectorAll('.go-tab').forEach(b => b.onclick = () => setTab(b.dataset.go));
 
+// pesquisa no Aprender (sem diferença de acento e maiúscula)
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function searchLearn(q) {
+  const words = norm(q).split(/\s+/).filter(w => w.length > 1);
+  const items = [...document.querySelectorAll('#tab-aprender details')];
+  let n = 0;
+  items.forEach(d => {
+    if (!d.dataset.open0) d.dataset.open0 = d.open ? '1' : '0';
+    const hit = !words.length || words.every(w => norm(d.textContent).includes(w));
+    d.hidden = !hit;
+    if (words.length) { d.open = hit; if (hit) n++; } else d.open = d.dataset.open0 === '1';
+  });
+  document.querySelectorAll('#tab-aprender h2.sec, #tab-aprender > .box:not(.search)').forEach(e => e.hidden = !!words.length);
+  $('learnClear').hidden = !q;
+  $('learnCount').hidden = !words.length;
+  $('learnCount').textContent = n ? `${n} assunto${n > 1 ? 's' : ''} encontrado${n > 1 ? 's' : ''} sobre "${q.trim()}".`
+    : `Nada encontrado sobre "${q.trim()}". Tente outra palavra, como "acorde", "escala" ou "som".`;
+}
+$('learnSearch').oninput = e => searchLearn(e.target.value);
+$('learnClear').onclick = () => { $('learnSearch').value = ''; searchLearn(''); $('learnSearch').focus(); };
+
+// popup de ajuda
+const dlg = $('helpDlg');
+const openHelp = () => { $('helpInput').value = ''; dlg.showModal ? dlg.showModal() : dlg.setAttribute('open', ''); setTimeout(() => $('helpInput').focus(), 50); };
+const closeHelp = () => (dlg.close ? dlg.close() : dlg.removeAttribute('open'));
+$('helpBtn').onclick = openHelp;
+$('helpClose').onclick = closeHelp;
+dlg.addEventListener('click', e => { if (e.target === dlg) closeHelp(); }); // tocar fora fecha
+$('helpForm').onsubmit = e => {
+  e.preventDefault();
+  const q = $('helpInput').value;
+  closeHelp(); setTab('aprender');
+  $('learnSearch').value = q; searchLearn(q);
+};
+$('helpGuide').onclick = () => { closeHelp(); setTab('aprender'); $('learnSearch').value = ''; searchLearn(''); };
+// na primeira vez, o popup aparece sozinho para mostrar que a ajuda existe
+try { if (!localStorage.getItem('helpSeen')) { localStorage.setItem('helpSeen', '1'); setTimeout(openHelp, 600); } } catch {}
+
 fillRoots();
 setTab(location.hash.slice(1) || 'escalas');
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

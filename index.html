@@ -24,7 +24,7 @@
         <h1 id="pageTitle">Escalas</h1>
       </div>
     </div>
-    <div class="font"><button id="soundBtn" aria-label="Desligar o som"><svg class="on-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg><svg class="off-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button><button id="themeBtn" title="Tema claro / escuro" aria-label="Mudar para tema claro"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12H4M20 12h2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button><button id="fminus" aria-label="Diminuir letra">A-</button><button id="fplus" aria-label="Aumentar letra">A+</button></div>
+    <div class="font"><button id="helpBtn" class="help" aria-label="Ajuda: está com dúvida?" title="Está com dúvida?"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4.1"/><circle cx="12" cy="17.6" r=".6" fill="currentColor"/></svg></button><button id="soundBtn" aria-label="Desligar o som"><svg class="on-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg><svg class="off-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button><button id="themeBtn" title="Tema claro / escuro" aria-label="Mudar para tema claro"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12H4M20 12h2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button><button id="fminus" aria-label="Diminuir letra">A-</button><button id="fplus" aria-label="Aumentar letra">A+</button></div>
   </div>
   <p id="pageSub" class="sub"></p>
   <nav id="tabs" aria-label="Seções">
@@ -143,6 +143,14 @@
   </section>
 
   <section id="tab-aprender" hidden>
+    <div class="search box">
+      <label for="learnSearch">Pesquisar sua dúvida</label>
+      <div class="search-row">
+        <input id="learnSearch" type="search" placeholder="Ex.: pestana, bemol, como ouvir, tema claro" autocomplete="off" enterkeyhint="search">
+        <button type="button" id="learnClear" class="link" hidden>Limpar</button>
+      </div>
+      <p id="learnCount" class="count" hidden></p>
+    </div>
     <h2 class="sec">Guia do aplicativo</h2>
     <div class="box"><p>Onde está cada coisa, tela por tela. Toque num título para abrir ou fechar. O botão laranja no fim de cada parte leva direto para aquela tela.</p></div>
 
@@ -249,6 +257,19 @@
       <p>Da mais grossa para a mais fina: 6ª corda Mi, 5ª Lá, 4ª Ré, 3ª Sol, 2ª Si, 1ª Mi. No desenho do braço, a corda mais fina fica em cima.</p></details>
   </section>
 </main>
+<dialog id="helpDlg" aria-labelledby="helpTitle">
+  <button type="button" class="close" id="helpClose" aria-label="Fechar">✕</button>
+  <h2 id="helpTitle">Está com dúvida?</h2>
+  <p>Escreva aqui o que você quer saber. O aplicativo abre a tela <b>Aprender</b> e mostra as explicações sobre isso.</p>
+  <form id="helpForm">
+    <input id="helpInput" type="search" placeholder="Ex.: como ouvir o acorde, pestana, bemol" autocomplete="off" enterkeyhint="search">
+    <div class="dlg-actions">
+      <button type="submit" class="play">Procurar</button>
+      <button type="button" class="link" id="helpGuide">Ver o guia do aplicativo</button>
+    </div>
+  </form>
+  <p class="small">Este botão <b>?</b> fica sempre no alto da tela.</p>
+</dialog>
 <script type="module" src="app.js"></script>
 </body>
 </html>
