@@ -203,8 +203,31 @@ svg .nt{cursor:pointer}
   .row{display:grid;grid-template-columns:repeat(4,1fr);row-gap:8px}
   .cell b{font-size:min(1.35em,8.5cqi)}
 }
-/* detalhe do acorde do campo */
-.fdetail{grid-column:1/-1;margin:2px 0 12px;border-color:var(--acc)}
-.fdetail .big{font-size:1.4rem}
-.fdetail .grid{grid-template-columns:repeat(auto-fill,minmax(calc(130px * var(--fs)),1fr))}
+/* painel do acorde do campo: lateral fixa no computador, gaveta embaixo no celular */
+.fpanel{background:var(--card);border:2px solid var(--acc);border-radius:16px;padding:12px 14px;box-shadow:0 8px 28px var(--shadow-strong);position:relative}
+.fpanel.empty{border:1px dashed var(--border);box-shadow:none}
+.fpanel .hint{color:var(--mut);margin:6px 0}
+.fpanel p{margin:6px 0}
+.fpanel .big{font-size:1.4rem}
+.fpanel .close{position:absolute;top:8px;right:8px;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--inner);color:var(--fg);font-size:1.1rem;cursor:pointer}
+.fpanel .shapes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px}
+.fpanel .vc svg{max-width:150px}
+.clayout{display:block}
+@media (min-width:900px){
+  .clayout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+  .fpanel{position:sticky;top:calc(var(--head-h) + 12px);max-height:calc(100vh - var(--head-h) - 24px);overflow:auto}
+  #fieldCards{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
+}
+@media (max-width:899px){
+  .fpanel.empty{display:none}
+  .fpanel{position:fixed;left:8px;right:8px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:35;max-height:44vh;overflow:auto;margin:0;padding:10px 12px}
+  .fpanel p{margin:4px 0}
+  .fpanel .big{font-size:1.25rem}
+  .fpanel .play{padding:8px 14px}
+  .fpanel .link{padding:6px 2px;font-size:.9rem}
+  .fpanel .shapes{display:flex;overflow-x:auto;gap:8px;padding-bottom:4px}
+  .fpanel .shapes .vc{flex:0 0 96px;padding:4px}
+  body.sheet-open main{padding-bottom:48vh}
+}
+@media (min-width:761px) and (max-width:899px){ .fpanel{bottom:12px} }
 .link{font:inherit;background:none;border:0;color:var(--acc);font-weight:700;cursor:pointer;padding:8px 4px;text-decoration:underline;text-underline-offset:3px}

@@ -190,8 +190,8 @@ function renderProgressoes() {
     if (p.playing) { stopProg(); renderProgressoes(); return; }
     p.playing = true;
     schedule(chords, chords.length > 6 ? 1300 : 1700, (x, i) => {
-      p.step = i; p.pos = null; strumV(bestVoicing(x.rootPc, x.type)); renderProgressoes();
-    }, () => { p.playing = false; renderProgressoes(); });
+      p.step = i; p.pos = null; strumV(bestVoicing(x.rootPc, x.type)); keepScroll(renderProgressoes);
+    }, () => { p.playing = false; keepScroll(renderProgressoes); });
     renderProgressoes();
   };
 
@@ -255,8 +255,7 @@ function renderCampos() {
       const on = sel && sel.scale === name && sel.idx === i;
       return `<button type="button" class="cell ${on ? 'on' : ''} ${i === 0 ? 'root' : ''}" data-i="${i}" data-s="${name}"><b>${c.chord}</b><small>${c.roman}</small></button>`;
     }).join('');
-    const card = `<div class="scard"><div class="name">${f[0].chord.replace(/m$/, '')} ${name}</div><div class="row">${cells}</div></div>`;
-    return card + (sel && sel.scale === name ? fieldDetail(f[sel.idx], f[0].chord.replace(/m$/, '') + ' ' + name) : '');
+    return `<div class="scard"><div class="name">${f[0].chord.replace(/m$/, '')} ${name}</div><div class="row">${cells}</div></div>`;
   }).join('');
   document.querySelectorAll('#fieldCards .cell').forEach(c => c.onclick = () => {
     const name = c.dataset.s, i = +c.dataset.i;
@@ -265,12 +264,17 @@ function renderCampos() {
     if (!same) { const f = harmonicField(state.root, name, state.sharps)[i]; strumV(bestVoicing(f.notes[0], f.type)); }
     renderCampos();
   });
-  if (sel) {
-    const f = harmonicField(state.root, sel.scale, state.sharps)[sel.idx];
-    $('fPlay').onclick = () => strumV(bestVoicing(f.notes[0], f.type));
-    $('fMore').onclick = () => goChord(f.notes[0], f.type);
-    $('fdetail').querySelectorAll('.vc').forEach(b => b.onclick = () => strum(fieldShapes(f)[+b.dataset.i].frets));
-  }
+  const panel = $('fpanel');
+  const f = sel && harmonicField(state.root, sel.scale, state.sharps);
+  panel.classList.toggle('empty', !f);
+  document.body.classList.toggle('sheet-open', !!f && state.tab === 'campos');
+  if (!f) { panel.innerHTML = '<p class="hint">Toque num acorde para ouvir e ver como tocar.</p>'; return; }
+  const c = f[sel.idx];
+  panel.innerHTML = fieldDetail(c, f[0].chord.replace(/m$/, '') + ' ' + sel.scale);
+  $('fPlay').onclick = () => strumV(bestVoicing(c.notes[0], c.type));
+  $('fMore').onclick = () => goChord(c.notes[0], c.type);
+  $('fClose').onclick = () => { state.fsel = null; renderCampos(); };
+  panel.querySelectorAll('.vc').forEach(b => b.onclick = () => strum(fieldShapes(c)[+b.dataset.i].frets));
 }
 // as formas mais fáceis de um acorde do campo (até 4)
 const fieldShapes = f => voicingsOf(f.notes[0], f.type).filter(v => v.bassIsRoot).slice(0, 4);
@@ -278,12 +282,11 @@ function fieldDetail(f, where) {
   const t = CHORD_TYPES[f.type], rootName = f.chord.replace(/[m°+]$/, '');
   const cn = spellChordFromRoot(rootName, t.iv, t.letters), names = nameMap(f.notes, cn); // mesma grafia do campo (Bb em F maior)
   const shapes = fieldShapes(f);
-  return `<div class="box fdetail" id="fdetail">
+  return `<button type="button" class="close" id="fClose" aria-label="Fechar">✕</button>
     <p><b class="big">${f.chord}</b> — ${ptOf(rootName)}, ${t.label.toLowerCase()} · grau <b>${f.roman}</b> de ${where}</p>
     <p>Notas: <b>${cn.join(' - ')}</b></p>
     <p>${playBtn('fPlay', 'Ouvir')} <button type="button" class="link" id="fMore">Ver todas as formas e o braço inteiro →</button></p>
-    <div class="grid">${shapes.map((v, i) => `<button type="button" class="vc" data-i="${i}">${chordSvg(v, f.notes[0], names)}<small>${v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta'}</small></button>`).join('')}</div>
-  </div>`;
+    <div class="shapes">${shapes.map((v, i) => `<button type="button" class="vc" data-i="${i}">${chordSvg(v, f.notes[0], names)}<small>${v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta'}</small></button>`).join('')}</div>`;
 }
 function goChord(pc, type) {
   state.croot = pc; state.ctype = type; state.cvoice = null;
@@ -375,7 +378,7 @@ function renderTab() {
 }
 const TAB_INFO = {
   escalas: ['Escalas', 'As notas de cada escala desenhadas no braço'],
-  campos: ['Campo harmônico', 'Os acordes que combinam em cada escala'],
+  campos: ['Campo harmônico', 'Os acordes que combinam em cada escala', 'Campos'],
   acordes: ['Acordes', 'Como montar qualquer acorde, com filtros e o sistema CAGED'],
   guitarra: ['Guitarra', 'Power chords, tríades e acordes de guitarrista nas 24 casas'],
   progressoes: ['Progressões', 'As sequências de acordes mais usadas, em qualquer tom'],
@@ -383,9 +386,10 @@ const TAB_INFO = {
 };
 function setTab(t) {
   stopProg();
+  document.body.classList.remove('sheet-open');
   if (!TAB_INFO[t]) t = 'escalas';
-  const [title, sub] = TAB_INFO[t];
-  $('pageTitle').textContent = title; $('pageSub').textContent = sub;
+  const [title, sub, short] = TAB_INFO[t];
+  $('pageTitle').textContent = short && innerWidth <= 760 ? short : title; $('pageSub').textContent = sub;
   document.title = `${title} · Braço e Escalas`;
   try { history.replaceState(null, '', '#' + t); } catch {}
   state.tab = t;
@@ -508,6 +512,14 @@ dropdown('root', 3); dropdown('scale'); dropdown('ctype');
 
 new ResizeObserver(() => document.documentElement.style.setProperty('--head-h', $('head').offsetHeight + 'px')).observe($('head'));
 window.addEventListener('scroll', () => $('head').classList.toggle('stuck', scrollY > 4), { passive: true });
+
+// mantém a tela parada: redesenhar não pode fazer a página pular
+const keepScroll = fn => { const y = scrollY; fn(); if (Math.abs(scrollY - y) > 1) scrollTo(0, y); };
+document.addEventListener('click', e => {
+  if (e.target.closest && e.target.closest('#tabs')) return;
+  const y = scrollY;
+  requestAnimationFrame(() => { if (Math.abs(scrollY - y) > 1) scrollTo(0, y); });
+}, true);
 
 fillRoots();
 setTab(location.hash.slice(1) || 'escalas');
