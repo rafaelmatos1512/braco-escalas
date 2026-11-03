@@ -58,6 +58,13 @@ test('silêncio e chiado não viram nota', () => {
 
 test('oitava errada do microfone é corrigida e as mensagens fazem sentido', () => {
   assert.ok(Math.abs(centsToString(freqOf(52), 0) - 0) < 0.01); // E3 lido na corda E2
+  // no automático, o harmônico da 6ª (E3) e da 5ª (A3) não pode virar outra corda
+  assert.equal(nearestString(freqOf(52)).i, 0);
+  assert.equal(nearestString(freqOf(57) * 2 ** (-15 / 1200)).i, 1);
+  // mas as cordas de verdade continuam certas (G3, B3, E4)
+  assert.equal(nearestString(freqOf(55)).i, 3);
+  assert.equal(nearestString(freqOf(59)).i, 4);
+  assert.equal(nearestString(freqOf(64)).i, 5);
   assert.equal(tuneStatus(0).key, 'ok');
   assert.equal(tuneStatus(-4).key, 'ok');
   assert.equal(tuneStatus(-30).key, 'low');

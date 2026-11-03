@@ -464,13 +464,14 @@ $('fminus').onclick = () => { fs = Math.max(0.85, +(fs - 0.15).toFixed(2)); appl
 applyFs();
 
 let lastPer = 0;
-new ResizeObserver(() => {
+const observe = (fn, target) => window.ResizeObserver ? new ResizeObserver(fn).observe(target) : (addEventListener('resize', fn), setTimeout(fn));
+observe(() => {
   const id = { escalas: 'board', acordes: 'board2', progressoes: 'board3', guitarra: 'board4' }[state.tab];
   const host = id && $(id);
   if (!host || !host.clientWidth) return;
   const p = perRowFor(host.clientWidth);
   if (p !== lastPer) { lastPer = p; render(); }
-}).observe(document.body);
+}, document.body);
 
 // filtros curtos viram botões (tudo do mesmo tamanho, sem lista abrindo no meio da tela)
 function segmentize(id) {
@@ -533,7 +534,7 @@ $('scale').onchange = e => { state.scale = e.target.value; state.sel = null; ren
 fillChordSelects();
 dropdown('root', 3); dropdown('scale'); dropdown('ctype');
 
-new ResizeObserver(() => document.documentElement.style.setProperty('--head-h', $('head').offsetHeight + 'px')).observe($('head'));
+observe(() => document.documentElement.style.setProperty('--head-h', $('head').offsetHeight + 'px'), $('head'));
 window.addEventListener('scroll', () => $('head').classList.toggle('stuck', scrollY > 4), { passive: true });
 
 // mantém a tela parada: redesenhar não pode fazer a página pular
@@ -625,10 +626,18 @@ function tnFrame(r) {
   tnShow(`<b>${s.n}ª corda</b> — ${s.name} (${s.letter})`, st.text, st.key, st.key === 'far' ? null : c);
 }
 async function tnToggleMic() {
+  if (tn.asking) return; // já está pedindo o microfone
   if (micOn()) { stopMic(); tnMicBtn(); tnIdle(); return; }
+  tn.asking = true;
   tnShow('—', 'Pedindo o microfone… se aparecer uma pergunta do navegador, toque em Permitir.');
-  try { await startMic(tnFrame); tnMicBtn(); tnIdle(); }
+  try {
+    await startMic(tnFrame, () => { tnMicBtn(); tnShow('—', 'O microfone foi desligado pelo aparelho. Toque em Ligar o microfone de novo.', 'err'); });
+    tn.asking = false;
+    if (!tdlg.open) { stopMic(); return; } // fechou o afinador enquanto pedia permissão
+    tnMicBtn(); tnIdle();
+  }
   catch (e) {
+    tn.asking = false;
     tnMicBtn();
     const msg = e && e.name === 'NotAllowedError'
       ? 'O navegador não deixou usar o microfone. Clique no cadeado ao lado do endereço do site e permita o microfone, ou afine de ouvido com os botões das cordas.'

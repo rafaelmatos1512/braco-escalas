@@ -45,10 +45,16 @@ export function detectPitch(buf, sr, minF = 60, maxF = 1100) {
 }
 
 // corda mais próxima do som ouvido
-export function nearestString(freq) {
+function closest(freq) {
   let best = 0, bc = Infinity;
   STRINGS.forEach((s, i) => { const c = cents(freq, freqOf(s.midi)); if (Math.abs(c) < Math.abs(bc)) { bc = c; best = i; } });
   return { i: best, cents: bc };
+}
+export function nearestString(freq) {
+  const r = closest(freq);
+  // o microfone às vezes pega o harmônico (uma oitava acima): se a metade bate bem numa corda, é ela
+  if (Math.abs(r.cents) > 100) { const h = closest(freq / 2); if (Math.abs(h.cents) < 60) return h; }
+  return r;
 }
 
 // quanto o som está longe da corda escolhida; se o microfone pegou a oitava (harmônico), corrige
@@ -76,7 +82,8 @@ export function tuneStatus(c) {
 let mic = null;
 export const micOn = () => !!mic;
 
-export async function startMic(onFrame) {
+export async function startMic(onFrame, onLost) {
+  if (mic) return;
   const md = typeof navigator !== 'undefined' && navigator.mediaDevices;
   if (!md || !md.getUserMedia) { const e = new Error('sem suporte'); e.name = 'NotSupportedError'; throw e; }
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -93,6 +100,8 @@ export async function startMic(onFrame) {
   const buf = new Float32Array(an.fftSize);
   const timer = setInterval(() => { an.getFloatTimeDomainData(buf); onFrame(detectPitch(buf, ctx.sampleRate)); }, 80);
   mic = { ctx, stream, timer };
+  // se o aparelho desligar o microfone (outro programa, fone tirado), avisa a tela
+  stream.getTracks().forEach(t => t.addEventListener('ended', () => { if (mic && mic.stream === stream) { stopMic(); onLost && onLost(); } }));
 }
 
 export function stopMic() {

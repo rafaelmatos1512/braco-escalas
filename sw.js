@@ -1,5 +1,5 @@
 // Busca sempre a versão nova; usa o cache só sem internet.
-const C = 'braco-v11';
+const C = 'braco-v12';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'music.js', 'chords.js', 'audio.js', 'tuner.js', 'icon.svg', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -13,5 +13,5 @@ self.addEventListener('fetch', e => {
   e.respondWith(fetch(url.href, { cache: 'no-cache' }).then(r => {
     if (r.ok) { const copy = r.clone(); caches.open(C).then(c => c.put(e.request, copy)); }
     return r;
-  }).catch(() => caches.match(e.request).then(m => m || caches.match('index.html'))));
+  }).catch(() => caches.match(e.request).then(m => m || (e.request.mode === 'navigate' ? caches.match('index.html') : Response.error()))));
 });
