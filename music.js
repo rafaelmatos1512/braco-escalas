@@ -229,3 +229,25 @@ export function progressionChords(key, mode, prog, useSharps) {
       names: spellChordFromRoot(rootName, t.iv, t.letters), pcs: t.iv.map(i => (rootPc + i) % 12) };
   });
 }
+
+// ---------- progressões criadas pelo usuário ----------
+// cada acorde é guardado pela distância até o tom (o: 0-11 semitons) e o tipo; trocar o tom transpõe tudo
+// grau e acidente de cada distância, em relação à escala do tom (tom menor = escala menor natural)
+const DEG_OF = {
+  maior: [[0, 0], [1, -1], [1, 0], [2, -1], [2, 0], [3, 0], [3, 1], [4, 0], [5, -1], [5, 0], [6, -1], [6, 0]],
+  menor: [[0, 0], [1, -1], [1, 0], [2, 0], [2, 1], [3, 0], [3, 1], [4, 0], [5, 0], [5, 1], [6, 0], [6, 1]],
+};
+const LOWER = new Set(['menor', 'm7', 'dim', 'm7b5']);
+const ROMAN_SUF = { menor: '', m7: '7', m7b5: 'ø', dim: '°', maior: '', '5': '5' };
+export function customChords(key, mode, items, useSharps) {
+  const scale = mode === 'maior' ? 'Maior' : 'Menor', inKey = new Set(scaleNotes(key, scale));
+  return items.map(({ o, t: type }) => {
+    const t = CHORD_TYPES[type], [deg, alt] = DEG_OF[mode][o];
+    const rootName = spellDegree(key, scale, deg, alt, useSharps), rootPc = (key + o) % 12;
+    const pcs = t.iv.map(i => (rootPc + i) % 12);
+    const num = LOWER.has(type) ? ROMAN[deg].toLowerCase() : ROMAN[deg];
+    const roman = (alt < 0 ? 'b' : alt > 0 ? '#' : '') + num + (type in ROMAN_SUF ? ROMAN_SUF[type] : t.suffix);
+    return { roman, type, rootPc, rootName, name: rootName + t.suffix, o,
+      names: spellChordFromRoot(rootName, t.iv, t.letters), pcs, inField: pcs.every(p => inKey.has(p)) };
+  });
+}

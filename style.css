@@ -315,3 +315,31 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 .tn-strings button:hover{border-color:var(--acc)}
 .tn-strings button.on{background:var(--acc-bg);border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .tn-strings button:first-child{grid-column:1/-1}
+
+/* progressões: acordes em fila e montar a própria */
+.pseq{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(104px * var(--fs)),1fr));gap:8px;margin:10px 0}
+.pc{font:inherit;color:var(--fg);background:var(--inner);border:2px solid var(--border);border-radius:12px;padding:6px 4px 2px;cursor:pointer;text-align:center;position:relative;min-width:0}
+.pc b{display:block;font-size:1.2rem;line-height:1.2;overflow-wrap:anywhere}
+.pc small{display:block;color:var(--mut);font-size:.8rem}
+.pc .pn{position:absolute;top:4px;left:6px;font-size:.7rem;color:var(--mut)}
+.pc svg{width:100%;max-width:120px;height:auto;display:block;margin:0 auto}
+.pc.on{border-color:var(--acc);background:var(--acc-bg)}
+.pc.out{border-style:dashed}
+.pc:hover{border-color:var(--hover-border)}
+.pc:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.eact{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0;padding:8px 10px;border-radius:12px;background:var(--acc-soft);border:1px solid var(--border)}
+.eact span{flex-basis:100%}
+.eact button,.etypes button,.efield button{font:inherit;padding:8px 12px;border-radius:10px;border:2px solid var(--border);background:var(--inner);color:var(--fg);cursor:pointer}
+.eact button:hover,.etypes button:hover,.efield button:hover{border-color:var(--acc)}
+.eact button.danger,.link.danger{color:var(--mute-x)}
+.etypes{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(120px * var(--fs)),1fr));gap:6px;margin:10px 0}
+.etypes b,.efield b{display:block;font-size:1.1rem}
+.etypes small,.efield small{display:block;color:var(--mut);font-size:.75rem;font-weight:400}
+.ename{display:flex;flex-direction:column;gap:6px;font-weight:700;max-width:420px}
+.ename input{font:inherit;font-weight:400;font-size:1.05rem;padding:10px 12px;border-radius:12px;border:2px solid var(--border);background:var(--inner);color:var(--fg)}
+.ename input:focus{outline:none;border-color:var(--acc)}
+.emsg{color:var(--mute-x);font-weight:700;min-height:1px;margin:6px 0}
+.emsg:empty{display:none}
+.pcard.new{border-style:dashed;border-color:var(--acc)}
+.pcard.new b{color:var(--acc)}
+.box.editing{border:2px solid var(--acc)}

@@ -146,9 +146,16 @@
       <label>Modo <select id="pmode"><option value="maior">Maior (alegre)</option><option value="menor">Menor (triste)</option></select><small class="hint">Maior soa alegre, menor soa triste. A lista de progressões muda conforme o modo.</small></label>
       <label>No braço mostrar <select id="plabels"><option value="notes">Notas</option><option value="iv">Intervalos</option></select><small class="hint">"Notas" mostra o nome (C, E, G). "Intervalos" mostra o papel de cada nota: 1 é a base, 3 a terça, 5 a quinta.</small></label>
     </div>
-    <h3>Progressões mais usadas — toque numa</h3>
-    <div id="pList" class="plist"></div>
+    <div id="pPick">
+      <h3>Progressões mais usadas — toque numa</h3>
+      <div id="pList" class="plist"></div>
+      <h3>Minhas progressões</h3>
+      <p class="hint">Monte a sua sequência com qualquer acorde, quantos quiser. Ela fica guardada neste aparelho.</p>
+      <div id="pMine" class="plist"></div>
+    </div>
+    <div id="pEditing" class="box editing" hidden><p><b>Montando sua progressão.</b> Escolha os acordes mais abaixo. Para mudar a ordem ou tirar um acorde, toque nele na sequência e use os botões que aparecem. No fim, toque em <b>Guardar a progressão</b>.</p></div>
     <div id="pDetail" class="box"></div>
+    <div id="pEditor" class="box editor"></div>
     <div class="board-wrap"><div id="board3"></div></div>
     <p class="legend"><i class="d o"></i> nota principal do acorde <i class="d b"></i> outras notas do acorde · toque numa bolinha para ouvir</p>
     <div class="legend-box"><b>Como ler os desenhos:</b> as linhas em pé são as cordas (a mais grossa à esquerda) e as deitadas são as casas.
@@ -230,6 +237,23 @@
         <li>Aparecem os acordes da sequência. <b>Toque num acorde</b> para ouvir e ver onde ele fica no braço.</li>
         <li><b>Tocar a progressão</b>: toca a sequência inteira, acendendo cada acorde. <b>Parar</b> interrompe.</li>
       </ol>
+      <p>Os acordes aparecem <b>em ordem, um ao lado do outro</b>, cada um com o desenho de como tocar.</p>
+      <p><button type="button" class="go-tab" data-go="progressoes">Abrir a tela Progressões →</button></p></details>
+
+    <details class="guide"><summary><span class="gi" data-icon="progressoes"></span>Montar a sua própria progressão</summary>
+      <p>Além das progressões prontas, você pode montar a sua, com qualquer acorde e quantos quiser.</p>
+      <ol>
+        <li>Na tela <b>Progressões</b>, escolha o <b>tom</b> e o <b>modo</b> (maior ou menor).</li>
+        <li>Em <b>Minhas progressões</b>, toque em <b>+ Criar uma progressão</b>.</li>
+        <li>Dê um <b>nome</b> (por exemplo "Música da festa"). Se deixar em branco, o aplicativo dá um nome.</li>
+        <li><b>Jeito rápido</b>: toque num acorde do campo harmônico (os que combinam com o tom). Ele entra no fim da sequência.</li>
+        <li><b>Qualquer acorde</b>: toque na nota e depois no tipo (maior, menor, 7, m7, maj7, diminuto…). Ele também entra no fim.</li>
+        <li>Para <b>mudar a ordem</b> ou <b>tirar</b> um acorde, toque nele na sequência e use <b>← Mover</b>, <b>Mover →</b>, <b>Repetir</b> ou <b>Tirar</b>.</li>
+        <li>Toque em <b>Tocar a progressão</b> para ouvir como ficou.</li>
+        <li>Toque em <b>Guardar a progressão</b>. Ela aparece em <b>Minhas progressões</b> para abrir quando quiser.</li>
+      </ol>
+      <p>Acordes com <b>borda tracejada</b> são de fora do campo harmônico do tom. Pode usar à vontade, eles só dão uma cor diferente à música.</p>
+      <p>Trocar o <b>tom</b> muda todos os acordes juntos (a sua progressão em C vira, por exemplo, a mesma em G). Para mudar ou apagar uma progressão guardada, abra e toque em <b>Mudar esta progressão</b>.</p>
       <p><button type="button" class="go-tab" data-go="progressoes">Abrir a tela Progressões →</button></p></details>
 
     <details class="guide"><summary><span class="gi" data-icon="tuner"></span>Afinador — como afinar o violão ou a guitarra</summary>
@@ -300,6 +324,7 @@
         <li><b>O aplicativo atualiza sozinho?</b> Sim. Com internet, ao abrir, ele já pega a versão nova. Se parecer antigo, feche e abra de novo.</li>
         <li><b>O afinador não mostra nada.</b> Veja se tocou em <b>Ligar o microfone</b> e em <b>Permitir</b>. Se o navegador bloqueou, clique no cadeado ao lado do endereço do site e libere o microfone. Computador sem microfone: use os botões das cordas para afinar de ouvido.</li>
         <li><b>O ponteiro do afinador não para quieto.</b> Toque a corda uma vez e deixe soar, sem abafar. Afaste-se de barulho, TV e conversa.</li>
+        <li><b>Onde ficam as progressões que eu montei?</b> Guardadas neste aparelho, em <b>Minhas progressões</b> na tela Progressões. Elas não passam para outro computador ou celular, e somem se os dados do navegador forem apagados.</li>
         <li><b>Funciona sem internet?</b> Sim, depois de aberto uma vez com internet.</li>
       </ul></details>
 
