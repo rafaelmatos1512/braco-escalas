@@ -117,15 +117,11 @@ ol.str{padding-left:1.2rem;margin:6px 0}
 .pcard{font:inherit;text-align:left;padding:10px 12px;border-radius:12px;border:2px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer}
 .pcard b{display:block;font-size:1.05rem}
 .pcard span{display:block;color:var(--mut);font-size:.9rem;margin-top:2px}
-.steps{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
-.steps button{font:inherit;min-width:72px;padding:8px 12px;border-radius:10px;border:2px solid var(--border);background:var(--inner);color:var(--fg);cursor:pointer;text-align:center}
-.steps button b{display:block;font-size:1.2rem}
-.steps button small{color:var(--mut)}
-.roots button.on,.seg button.on,.pcard.active,.steps button.on{border-color:var(--acc);background:var(--acc-bg);font-weight:700}
-.vc,.pcard,.roots button,.seg button,.steps button,.dd-btn{transition:border-color .15s,background .15s,transform .1s}
-.vc:hover,.pcard:hover,.roots button:hover,.seg button:hover,.steps button:hover{border-color:var(--hover-border)}
-.vc:active,.pcard:active,.roots button:active,.seg button:active,.steps button:active,.cell:active{transform:scale(.97)}
-.cell:focus-visible,.vc:focus-visible,.seg button:focus-visible,.roots button:focus-visible,.pcard:focus-visible,.steps button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.roots button.on,.seg button.on,.pcard.active{border-color:var(--acc);background:var(--acc-bg);font-weight:700}
+.vc,.pcard,.roots button,.seg button,.dd-btn{transition:border-color .15s,background .15s,transform .1s}
+.vc:hover,.pcard:hover,.roots button:hover,.seg button:hover{border-color:var(--hover-border)}
+.vc:active,.pcard:active,.roots button:active,.seg button:active,.cell:active{transform:scale(.97)}
+.cell:focus-visible,.vc:focus-visible,.seg button:focus-visible,.roots button:focus-visible,.pcard:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 
 /* menu próprio (substitui a lista nativa) */
 .dd{position:relative;width:100%;min-width:150px}
@@ -342,4 +338,4 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 .emsg:empty{display:none}
 .pcard.new{border-style:dashed;border-color:var(--acc)}
 .pcard.new b{color:var(--acc)}
-.box.editing{border:2px solid var(--acc)}
+@media (min-width:900px){ .only-small{display:none} } /* em tela grande a dica fica no painel ao lado */

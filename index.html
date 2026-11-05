@@ -64,7 +64,7 @@
   <section id="tab-campos" hidden>
     <div class="box">
       <p><b>O que é o campo harmônico?</b> São os acordes que combinam entre si dentro de uma escala. Cada nota da escala "vira" um acorde. Os números romanos mostram a posição: maiúsculo (I, IV, V) é acorde maior, minúsculo (ii, iii, vi) é menor. Os mais usados costumam ser o I, o IV e o V.</p>
-      <p>Toque num acorde para ouvir e ver como tocar.</p>
+      <p class="only-small">Toque num acorde para ouvir e ver como tocar.</p>
     </div>
     <div class="clayout">
       <div id="fieldCards"></div>
@@ -91,11 +91,7 @@
         <h3 class="first">Escolha a nota do acorde (as 12 notas)</h3>
         <div id="chordRoots" class="roots"></div>
         <div id="chordInfo" class="box"></div>
-        <div class="legend-box"><b>Como ler os desenhos:</b> as linhas em pé são as cordas (a mais grossa à esquerda) e as deitadas são as casas.
-  <span class="lg"><i class="lx">×</i> não tocar a corda</span> <span class="lg"><i class="lo"></i> tocar a corda solta</span>
-  <span class="lg"><i class="ld or"></i> nota principal</span> <span class="lg"><i class="ld bl"></i> outras notas</span>
-  <span class="lg"><i class="lb"></i> pestana</span> <span class="lg"><i class="ln">5ª</i> casa onde o desenho começa</span>
-  <span class="lg">Toque num desenho para ouvir e ver no braço.</span></div>
+        <div class="legend-box" data-chord-legend></div>
         <div id="cagedWrap" class="box">
           <h3 class="first">Sistema CAGED — o mesmo acorde em 5 lugares do braço</h3>
           <p>As 5 formas são os acordes abertos de <b>C, A, G, E e D</b> (daí o nome CAGED). Cada desenho é arrastado pelo braço até soar a nota escolhida, usando a pestana no lugar das cordas soltas. Elas aparecem em ordem, do início do braço para o fim, e se encaixam uma depois da outra. (Só para acordes maiores e menores.)</p>
@@ -125,11 +121,7 @@
         <h3 class="first">Nota do acorde</h3>
         <div id="gRoots" class="roots"></div>
         <div id="gInfo" class="box"></div>
-        <div class="legend-box"><b>Como ler os desenhos:</b> as linhas em pé são as cordas (a mais grossa à esquerda) e as deitadas são as casas.
-  <span class="lg"><i class="lx">×</i> não tocar a corda</span> <span class="lg"><i class="lo"></i> tocar a corda solta</span>
-  <span class="lg"><i class="ld or"></i> nota principal</span> <span class="lg"><i class="ld bl"></i> outras notas</span>
-  <span class="lg"><i class="lb"></i> pestana</span> <span class="lg"><i class="ln">5ª</i> casa onde o desenho começa</span>
-  <span class="lg">Toque num desenho para ouvir e ver no braço.</span></div>
+        <div class="legend-box" data-chord-legend></div>
         <div id="gPositions" class="grid"></div>
         <div id="gSel" class="box"></div>
         <div class="board-wrap"><div id="board4"></div></div>
@@ -147,22 +139,25 @@
       <label>No braço mostrar <select id="plabels"><option value="notes">Notas</option><option value="iv">Intervalos</option></select><small class="hint">"Notas" mostra o nome (C, E, G). "Intervalos" mostra o papel de cada nota: 1 é a base, 3 a terça, 5 a quinta.</small></label>
     </div>
     <div id="pPick">
+      <div class="legend-box"><b>Como criar a sua progressão</b>
+        <ol class="steps-train">
+          <li>Desça a tela até <b>Minhas progressões</b>, depois da lista abaixo, e toque em <b>+ Criar uma progressão</b>.</li>
+          <li>Escreva um nome para ela.</li>
+          <li>Toque nos acordes, um de cada vez, na ordem da música.</li>
+          <li>Toque em <b>Guardar a progressão</b>.</li>
+        </ol>
+      </div>
       <h3>Progressões mais usadas — toque numa</h3>
       <div id="pList" class="plist"></div>
       <h3>Minhas progressões</h3>
       <p class="hint">Monte a sua sequência com qualquer acorde, quantos quiser. Ela fica guardada neste aparelho.</p>
       <div id="pMine" class="plist"></div>
     </div>
-    <div id="pEditing" class="box editing" hidden><p><b>Montando sua progressão.</b> Escolha os acordes mais abaixo. Para mudar a ordem ou tirar um acorde, toque nele na sequência e use os botões que aparecem. No fim, toque em <b>Guardar a progressão</b>.</p></div>
     <div id="pDetail" class="box"></div>
     <div id="pEditor" class="box editor"></div>
     <div class="board-wrap"><div id="board3"></div></div>
     <p class="legend"><i class="d o"></i> nota principal do acorde <i class="d b"></i> outras notas do acorde · toque numa bolinha para ouvir</p>
-    <div class="legend-box"><b>Como ler os desenhos:</b> as linhas em pé são as cordas (a mais grossa à esquerda) e as deitadas são as casas.
-  <span class="lg"><i class="lx">×</i> não tocar a corda</span> <span class="lg"><i class="lo"></i> tocar a corda solta</span>
-  <span class="lg"><i class="ld or"></i> nota principal</span> <span class="lg"><i class="ld bl"></i> outras notas</span>
-  <span class="lg"><i class="lb"></i> pestana</span> <span class="lg"><i class="ln">5ª</i> casa onde o desenho começa</span>
-  <span class="lg">Toque num desenho para ouvir e ver no braço.</span></div>
+    <div class="legend-box" data-chord-legend></div>
     <h3 id="pPosTitle">Onde tocar este acorde no braço (casas 0 a 24)</h3>
     <div id="pPositions" class="grid"></div>
   </section>
@@ -317,7 +312,6 @@
         <li><b>A tela está escura demais.</b> Toque na <b>lua</b> no alto da tela para o tema claro. Tocando de novo (no sol), volta ao escuro.</li>
         <li><b>Toquei num acorde e o braço mostra só uma forma.</b> Toque no mesmo desenho de novo para voltar a ver todas as notas.</li>
         <li><b>Apareceu "Nenhuma forma com esses filtros".</b> Algum filtro está muito apertado. Volte "Usar cordas soltas?" e "Usar pestana?" para "Sim" e "Região do braço" para "Qualquer".</li>
-        <li><b>Por que às vezes aparece Bb e às vezes A#?</b> É a mesma nota com dois nomes; o aplicativo usa o nome certo para cada escala. Veja "Por que às vezes aparece Bb e às vezes A#?" mais abaixo.</li>
         <li><b>O que é o número romano (I, IV, V) embaixo dos acordes?</b> É a posição do acorde na escala. Maiúsculo é acorde maior, minúsculo é menor.</li>
         <li><b>Onde escolho a nota na tela Acordes?</b> Nos 12 botões (C, C#/Db, D…) logo acima da explicação do acorde.</li>
         <li><b>Como volto ao começo da tela?</b> Role para cima, ou toque de novo no nome da tela na barra de telas.</li>
@@ -330,9 +324,7 @@
 
     <details class="guide"><summary><span class="gi" data-icon="aprender"></span>Dicas</summary>
       <ul>
-        <li>O aplicativo funciona <b>sem internet</b> depois de aberto uma vez. Com internet, ele se atualiza sozinho ao abrir.</li>
         <li>Ele lembra das suas escolhas: tema, tamanho da letra, som e a última tela aberta.</li>
-        <li>No iPhone, se não sair som, confira a chave lateral de silencioso.</li>
       </ul></details>
 
     <h2 class="sec">Aprender música</h2>
@@ -356,8 +348,6 @@
       <p>Acorde são várias notas tocadas juntas. Tríade é o acorde de 3 notas, o mais básico: a nota de partida, a terceira e a quinta.</p></details>
     <details><summary>Símbolos dos acordes (m, °, +, 7, maj7, sus)</summary>
       <p>Só a letra (C): acorde maior, som alegre. <b>m</b> (Am): menor, som mais triste. <b>°</b> (B°): diminuto, som tenso. <b>+</b> (Eb+): aumentado, som flutuante. <b>7</b> (G7): maior com sétima, pede continuação. <b>maj7</b>: sétima maior, som elegante. <b>sus2/sus4</b>: suspenso, som aberto e indefinido.</p></details>
-    <details><summary>Como ler o desenho de um acorde</summary>
-      <p>As 6 linhas verticais são as cordas: a mais grossa (6ª) fica à esquerda e a mais fina (1ª) à direita. As linhas horizontais são as casas. As bolinhas mostram onde apertar, com a letra da nota dentro e o laranja marcando a nota principal do acorde. O <b>×</b> em cima da corda quer dizer não tocar essa corda. O <b>O</b> quer dizer tocar a corda solta, sem apertar. Se o desenho não começa na casa 1, o número ao lado (por exemplo 5ª) diz onde ele começa.</p></details>
     <details><summary>O que é pestana</summary>
       <p>É quando você apoia um dedo (geralmente o indicador) esticado sobre várias cordas na mesma casa, como uma barra. Aparece no desenho como uma faixa arredondada. É mais difícil no começo, mas permite tocar o mesmo acorde em qualquer parte do braço.</p></details>
     <details><summary>O que é o sistema CAGED</summary>

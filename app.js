@@ -198,12 +198,14 @@ const seqCards = (chords, step) => '<div class="pseq">' + chords.map((x, i) => {
     `<span class="pn">${i + 1}º</span><b>${x.name}</b><small>${x.roman}</small>${v ? chordSvg(v, x.rootPc, nameMap(x.pcs, x.names)) : ''}</button>`;
 }).join('') + '</div>';
 
+// entrar ou sair da montagem muda muito a altura da página: vai direto ao ponto certo, sem o pulo
+const jumpTo = id => { tabJump = true; $(id).scrollIntoView(); };
+
 function renderProgressoes() {
   const p = state.p, ed = p.ed, list = PROGRESSIONS[p.mode];
   const scale = p.mode === 'maior' ? 'Maior' : 'Menor', keyName = spelledScale(p.key, scale, state.sharps)[0];
   rootButtons($('pKeys'), p.key, k => { stopProg(); p.key = k; p.pos = null; renderProgressoes(); });
   $('pPick').hidden = !!ed;
-  $('pEditing').hidden = !ed;
   $('pEditor').hidden = !ed;
 
   // listas: prontas e as minhas
@@ -222,7 +224,7 @@ function renderProgressoes() {
     stopProg(); const m = myProgs[+b.dataset.i];
     p.src = 'mine'; p.mine = +b.dataset.i; p.key = m.key; p.mode = m.mode; setSeg('pmode', m.mode); p.step = 0; p.pos = null; renderProgressoes();
   });
-  $('pNew').onclick = () => { stopProg(); p.ed = { id: null, name: '', items: [], root: p.key, msg: '', del: false }; p.step = 0; p.pos = null; renderProgressoes(); };
+  $('pNew').onclick = () => { stopProg(); p.ed = { id: null, name: '', items: [], root: p.key, msg: '', del: false }; p.step = 0; p.pos = null; renderProgressoes(); jumpTo('pDetail'); };
 
   const cur = curProg(), chords = cur.chords;
   if (p.step >= chords.length) p.step = Math.max(0, chords.length - 1);
@@ -257,7 +259,7 @@ function renderProgressoes() {
   };
   if ($('pEdit')) $('pEdit').onclick = () => {
     stopProg(); const m = myProgs[p.mine];
-    p.ed = { id: m.id, name: m.name, items: m.items.map(x => ({ ...x })), root: p.key, msg: '', del: false }; renderProgressoes();
+    p.ed = { id: m.id, name: m.name, items: m.items.map(x => ({ ...x })), root: p.key, msg: '', del: false }; renderProgressoes(); jumpTo('pDetail');
   };
   if (ed) renderEditor(chords, keyName, scale);
   else $('pEditor').innerHTML = '';
@@ -281,12 +283,14 @@ function renderEditor(chords, keyName, scale) {
   const ro = (ed.root - p.key + 12) % 12, types = Object.keys(CHORD_TYPES);
   const byType = customChords(p.key, p.mode, types.map(t => ({ o: ro, t })), state.sharps);
   $('pEditor').innerHTML =
-    `<label class="ename">Nome da progressão <input id="eName" maxlength="40" placeholder="Ex.: Música da festa" value="${esc(ed.name)}"></label>` +
-    `<h3>Pôr acorde — jeito rápido</h3><p class="hint">São os acordes do campo harmônico de ${keyName} ${p.mode}: todos combinam com o tom. Toque num e ele entra no fim da sequência.</p>` +
+    `<label class="ename"><span>1º Nome da progressão</span><input id="eName" maxlength="40" placeholder="Ex.: Música da festa" value="${esc(ed.name)}"><small class="hint">Escreva um nome para achar depois. Se deixar vazio, o aplicativo dá um nome sozinho.</small></label>` +
+    `<h3><b>2º</b> Pôr acorde — jeito rápido</h3><p class="hint">São os acordes do campo harmônico de ${keyName} ${p.mode}: todos combinam com o tom. Toque num e ele entra no fim da sequência.</p>` +
     `<div class="roots efield">${field.map((f, i) => `<button type="button" data-o="${(notes[i] - p.key + 12) % 12}" data-t="${f.type}"><b>${f.chord}</b><small>${f.roman}</small></button>`).join('')}</div>` +
-    '<h3>Pôr qualquer acorde</h3><p class="hint"><b>1º</b> toque na nota. <b>2º</b> toque no tipo: o acorde entra no fim da sequência.</p>' +
+    '<h3>Ou pôr qualquer acorde</h3><p class="hint">Primeiro toque na nota. Depois toque no tipo: o acorde entra no fim da sequência.</p>' +
     '<div class="roots" id="eRoots"></div>' +
     `<div class="etypes">${byType.map((x, i) => `<button type="button" data-t="${types[i]}"><b>${x.name}</b><small>${CHORD_TYPES[types[i]].label}</small></button>`).join('')}</div>` +
+    '<h3><b>3º</b> Confira a sequência</h3><p class="hint">Ela aparece lá em cima, na ordem da música. Toque num acorde para ouvir e para mover, repetir ou tirar.</p>' +
+    '<h3><b>4º</b> Guarde</h3><p class="hint">Depois de guardar, ela fica em <b>Minhas progressões</b>, para abrir quando quiser.</p>' +
     `<p class="emsg" aria-live="polite">${ed.msg}</p>` +
     '<div class="dlg-actions"><button type="button" class="play" id="eSave">Guardar a progressão</button><button type="button" class="link" id="eCancel">Cancelar</button>' +
     (ed.id ? `<button type="button" class="link danger" id="eDelAll">${ed.del ? 'Toque de novo para apagar de vez' : 'Apagar esta progressão'}</button>` : '') + '</div>';
@@ -296,7 +300,11 @@ function renderEditor(chords, keyName, scale) {
     stopProg();
     if (ed.items.length >= MAX_ITEMS) { ed.msg = `O limite é de ${MAX_ITEMS} acordes.`; renderProgressoes(); return; }
     ed.items.push({ o, t }); ed.msg = ''; ed.del = false; p.step = ed.items.length - 1; p.pos = null;
-    strumV(bestVoicing((p.key + o) % 12, t)); renderProgressoes();
+    strumV(bestVoicing((p.key + o) % 12, t));
+    // a sequência cresce: mantém o quadro dos acordes parado sob o dedo
+    const top = $('pEditor').getBoundingClientRect().top;
+    renderProgressoes();
+    tabJump = true; scrollBy(0, $('pEditor').getBoundingClientRect().top - top);
   };
   $('pEditor').querySelectorAll('.efield button').forEach(b => b.onclick = () => add(+b.dataset.o, b.dataset.t));
   $('pEditor').querySelectorAll('.etypes button').forEach(b => b.onclick = () => add(ro, b.dataset.t));
@@ -316,13 +324,13 @@ function renderEditor(chords, keyName, scale) {
     if (i >= 0) myProgs[i] = rec; else myProgs.push(rec);
     if (!saveMine()) { ed.msg = 'Não consegui guardar neste aparelho. Ela fica só até fechar o aplicativo.'; }
     p.ed = null; p.src = 'mine'; p.mine = i >= 0 ? i : myProgs.length - 1; p.pos = null;
-    renderProgressoes();
+    renderProgressoes(); jumpTo('pDetail');
   };
-  $('eCancel').onclick = () => { stopProg(); p.ed = null; p.pos = null; renderProgressoes(); };
+  $('eCancel').onclick = () => { stopProg(); p.ed = null; p.pos = null; renderProgressoes(); jumpTo('pDetail'); };
   if ($('eDelAll')) $('eDelAll').onclick = () => {
     if (!ed.del) { ed.del = true; renderProgressoes(); return; }
     stopProg(); myProgs = myProgs.filter(m => m.id !== ed.id); saveMine();
-    p.ed = null; p.src = 'ready'; p.step = 0; p.pos = null; renderProgressoes();
+    p.ed = null; p.src = 'ready'; p.step = 0; p.pos = null; renderProgressoes(); jumpTo('pDetail');
   };
 }
 
@@ -786,6 +794,9 @@ $('tunerBtn').onclick = openTuner;
 $('tunerClose').onclick = closeTuner;
 $('micBtn').onclick = tnToggleMic;
 document.querySelectorAll('[data-open-tuner]').forEach(b => b.onclick = openTuner);
+
+const CHORD_LEGEND = '<b>Como ler os desenhos:</b> as linhas em pé são as cordas (a mais grossa à esquerda) e as deitadas são as casas. <span class="lg"><i class="lx">×</i> não tocar a corda</span> <span class="lg"><i class="lo"></i> tocar a corda solta</span> <span class="lg"><i class="ld or"></i> nota principal</span> <span class="lg"><i class="ld bl"></i> outras notas</span> <span class="lg"><i class="lb"></i> pestana</span> <span class="lg"><i class="ln">5ª</i> casa onde o desenho começa</span> <span class="lg">Toque num desenho para ouvir e ver no braço.</span>';
+document.querySelectorAll('[data-chord-legend]').forEach(el => { el.innerHTML = CHORD_LEGEND; });
 
 fillRoots();
 setTab(location.hash.slice(1) || 'escalas');
