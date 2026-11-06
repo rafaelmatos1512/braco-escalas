@@ -22,3 +22,12 @@ test('CAGED de C maior: 5 formas em ordem no braço', () => {
   assert.deepEqual(c.map(v => v.shape), ['C', 'A', 'G', 'E', 'D']);
   assert.equal(shape(c[0]), 'x32010');
 });
+
+test('findVoicing acha a forma pelas casas e recusa o que não existe', async () => {
+  const { findVoicing, neckPositions } = await import('../chords.js');
+  const { CHORD_TYPES } = await import('../music.js');
+  const list = neckPositions(0, 'maior', CHORD_TYPES.maior.iv);
+  assert.equal(findVoicing(list, [...list[2].frets]), list[2]);
+  assert.equal(findVoicing(list, [9, 9, 9, 9, 9, 9]), null);
+  assert.equal(findVoicing(list, null), null);
+});

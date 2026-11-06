@@ -339,3 +339,5 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 .pcard.new{border-style:dashed;border-color:var(--acc)}
 .pcard.new b{color:var(--acc)}
 @media (min-width:900px){ .only-small{display:none} } /* em tela grande a dica fica no painel ao lado */
+.elive{position:sticky;top:calc(var(--head-h) + 4px);z-index:5;background:var(--card);border:1px solid var(--acc);border-radius:10px;padding:8px 10px;margin:0 0 10px}
+.elive .emsg{margin:4px 0 0;color:var(--fg);font-weight:700}

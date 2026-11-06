@@ -132,12 +132,15 @@
 
   <section id="tab-progressoes" hidden>
     <div class="box"><p><b>O que é uma progressão?</b> É a sequência de acordes de uma música. Os números romanos dizem a posição de cada acorde no tom, então a mesma progressão serve em qualquer tom: escolha o tom e o aplicativo troca os acordes sozinho.</p></div>
-    <h3 class="first">Tom da música</h3>
+    <div id="pTopHome"><div id="pTop">
+    <h3 class="first" id="pTomTitle">Tom da música</h3>
+    <p id="pTomHint" class="hint" hidden>É o tom de toda esta progressão. Se trocar depois, todos os acordes já colocados mudam juntos.</p>
     <div id="pKeys" class="roots"></div>
     <div class="opts">
       <label>Modo <select id="pmode"><option value="maior">Maior (alegre)</option><option value="menor">Menor (triste)</option></select><small class="hint">Maior soa alegre, menor soa triste. A lista de progressões muda conforme o modo.</small></label>
       <label>No braço mostrar <select id="plabels"><option value="notes">Notas</option><option value="iv">Intervalos</option></select><small class="hint">"Notas" mostra o nome (C, E, G). "Intervalos" mostra o papel de cada nota: 1 é a base, 3 a terça, 5 a quinta.</small></label>
     </div>
+    </div></div>
     <div id="pPick">
       <div class="legend-box"><b>Como criar a sua progressão</b>
         <ol class="steps-train">
@@ -158,7 +161,8 @@
     <div class="board-wrap"><div id="board3"></div></div>
     <p class="legend"><i class="d o"></i> nota principal do acorde <i class="d b"></i> outras notas do acorde · toque numa bolinha para ouvir</p>
     <div class="legend-box" data-chord-legend></div>
-    <h3 id="pPosTitle">Onde tocar este acorde no braço (casas 0 a 24)</h3>
+    <h3 id="pPosTitle">Trocar a forma deste acorde (casas 0 a 24)</h3>
+    <p id="pPosHint" class="hint"></p>
     <div id="pPositions" class="grid"></div>
   </section>
 
@@ -244,6 +248,7 @@
         <li><b>Jeito rápido</b>: toque num acorde do campo harmônico (os que combinam com o tom). Ele entra no fim da sequência.</li>
         <li><b>Qualquer acorde</b>: toque na nota e depois no tipo (maior, menor, 7, m7, maj7, diminuto…). Ele também entra no fim.</li>
         <li>Para <b>mudar a ordem</b> ou <b>tirar</b> um acorde, toque nele na sequência e use <b>← Mover</b>, <b>Mover →</b>, <b>Repetir</b> ou <b>Tirar</b>.</li>
+        <li>Quer o acorde em outra parte do braço? Toque nele na sequência e, em <b>Trocar a forma</b>, toque no desenho que preferir. Isso vale também nas progressões prontas.</li>
         <li>Toque em <b>Tocar a progressão</b> para ouvir como ficou.</li>
         <li>Toque em <b>Guardar a progressão</b>. Ela aparece em <b>Minhas progressões</b> para abrir quando quiser.</li>
       </ol>

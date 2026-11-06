@@ -135,6 +135,9 @@ export function neckPositions(rootPc, type, iv) {
   return withOctaves(best);
 }
 
+// acha na lista a forma com estas casas (null se não houver: forma antiga ou inválida)
+export const findVoicing = (list, frets) => (Array.isArray(frets) && list.find(v => v.frets.length === frets.length && v.frets.every((f, i) => f === frets[i]))) || null;
+
 // power chords com a nota base na 6ª, 5ª ou 4ª corda
 const POWER = [
   { s: 0, tpl: [0, 2, 2, -1, -1, -1], label: 'base na 6ª corda' },
