@@ -1,4 +1,4 @@
-import { SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, TUNING, noteName, noteAt, ptName, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, spellChordFromRoot, PROGRESSIONS, progressionChords, customChords,
+import { SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, TUNING, noteName, noteAt, ptName, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, spellChordFromRoot, PROGRESSIONS, progressionChords, customChords, itemsFromChords,
   scaleNotes, harmonicField, degreeLabels } from './music.js';
 import { midiAt, playNote, strum, sequence, schedule, stopAll, soundOn, setSound } from './audio.js';
 import { STRINGS as TSTR, nearestString, centsToString, tuneStatus, startMic, stopMic, micOn } from './tuner.js';
@@ -274,7 +274,12 @@ function renderProgressoes() {
     const t = CHORD_TYPES[c.type];
     html += `<p><b>${c.name}</b> (${ptOf(c.rootName)}, ${t.label.toLowerCase()}): notas <b>${c.names.join(' - ')}</b>.</p>`;
   }
-  if (cur.mine && !ed) html += '<p><button type="button" class="link" id="pEdit">Mudar esta progressão (pôr, tirar ou trocar acordes)</button></p>';
+  if (cur.mine && !ed) {
+    const armed = p.delArm === myProgs[p.mine].id;
+    html += '<p><button type="button" class="link" id="pEdit">Mudar esta progressão (pôr, tirar ou trocar acordes)</button> ' +
+      `<button type="button" class="link danger" id="pDelMine">${armed ? 'Toque de novo para excluir de vez' : 'Excluir esta progressão'}</button></p>`;
+  }
+  if (!cur.mine && !ed) html += '<p><button type="button" class="link" id="pCustom">Personalizar esta progressão (pôr, tirar ou trocar acordes)</button></p><p class="hint">A pronta continua igual. A sua versão fica guardada em <b>Minhas progressões</b>.</p>';
   $('pDetail').innerHTML = html;
 
   $('pDetail').querySelectorAll('.pc').forEach(b => b.onclick = () => {
@@ -288,7 +293,20 @@ function renderProgressoes() {
     }, () => { p.playing = false; keepScroll(renderProgressoes); });
     renderProgressoes();
   };
+  if ($('pDelMine')) $('pDelMine').onclick = () => {
+    const id = myProgs[p.mine].id;
+    if (p.delArm !== id) { p.delArm = id; renderProgressoes(); return; } // pede dois toques para evitar engano
+    stopProg(); p.delArm = null; myProgs = myProgs.filter(m => m.id !== id); saveMine();
+    p.src = 'ready'; p.step = 0; p.pos = null; renderProgressoes(); jumpTo('pDetail');
+  };
+  if ($('pCustom')) $('pCustom').onclick = () => {
+    stopProg();
+    const items = itemsFromChords(p.key, chords).map((x, i) => { const f = voiceSlot(i).get(); return f ? { ...x, f, fk: p.key } : x; });
+    p.ed = { id: null, name: `${cur.name} (minha)`.slice(0, 40), items, root: p.key, msg: '', del: false }; p.step = 0; p.pos = null;
+    renderProgressoes(); jumpTo('pDetail');
+  };
   if ($('pEdit')) $('pEdit').onclick = () => {
+    p.delArm = null;
     stopProg(); const m = myProgs[p.mine];
     p.ed = { id: m.id, name: m.name, items: m.items.map(x => ({ ...x })), root: p.key, msg: '', del: false }; renderProgressoes(); jumpTo('pDetail');
   };

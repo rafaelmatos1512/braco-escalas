@@ -34,3 +34,13 @@ test('qualquer tipo em qualquer distância e tom: notas certas e grafia com letr
       assert.ok(!/[#b]{3}/.test(c.name), c.name);
     }
 });
+
+test('personalizar: toda progressão pronta vira itens e mantém os mesmos acordes', async () => {
+  const { PROGRESSIONS, progressionChords, itemsFromChords } = await import('../music.js');
+  for (const mode of ['maior', 'menor']) for (const pr of PROGRESSIONS[mode]) for (let key = 0; key < 12; key++) {
+    const ready = progressionChords(key, mode, pr, true);
+    const mine = customChords(key, mode, itemsFromChords(key, ready), true);
+    assert.deepEqual(mine.map(c => [c.rootPc, c.type]), ready.map(c => [c.rootPc, c.type]), pr.name);
+    assert.deepEqual(mine.map(c => c.name), ready.map(c => c.name), `${pr.name} em ${key}`);
+  }
+});

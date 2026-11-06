@@ -239,6 +239,9 @@ const DEG_OF = {
 };
 const LOWER = new Set(['menor', 'm7', 'dim', 'm7b5']);
 const ROMAN_SUF = { menor: '', m7: '7', m7b5: 'ø', dim: '°', maior: '', '5': '5' };
+// converte acordes de uma progressão pronta em itens editáveis (distância até o tom + tipo)
+export const itemsFromChords = (key, chords) => chords.map(c => ({ o: (c.rootPc - key + 12) % 12, t: c.type }));
+
 export function customChords(key, mode, items, useSharps) {
   const scale = mode === 'maior' ? 'Maior' : 'Menor', inKey = new Set(scaleNotes(key, scale));
   return items.map(({ o, t: type }) => {
