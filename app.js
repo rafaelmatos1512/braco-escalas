@@ -519,14 +519,20 @@ function renderAcordes() {
   document.querySelectorAll('#chordRoots button').forEach(b => b.onclick = () => { state.croot = +b.dataset.p; state.cvoice = null; renderAcordes(); });
 
   const count = !filtered.length
-    ? 'Nenhuma forma com esses filtros. Tente afrouxar um filtro (por exemplo "Nota mais grave: Qualquer").'
+    ? 'Nenhuma forma com esses filtros. O acorde existe: os filtros é que estão apertados demais.'
     : filtered.length > MAX_SHOW
       ? `Mostrando as ${MAX_SHOW} formas mais fáceis (de ${filtered.length} encontradas). Toque numa para ver os detalhes.`
       : `${filtered.length} forma${filtered.length === 1 ? '' : 's'} de tocar, das mais fáceis para as mais difíceis. Toque numa para ver os detalhes.`;
   $('chordInfo').innerHTML =
     `<p><b>${cn[0]}${t.suffix}</b> — ${ptOf(cn[0])} ${t.label.toLowerCase()}</p>` +
     `<p>Notas do acorde: <b>${cn.join(' - ')}</b></p><p>${t.desc}</p><p>${count}</p>` +
+    (filtered.length ? '' : '<p><button type="button" class="link" id="clearCf">Limpar os filtros e ver as formas</button></p>') +
     `<p>${playBtn('playChord', 'Ouvir o acorde')}</p>`;
+  if ($('clearCf')) $('clearCf').onclick = () => {
+    state.cf = { region: 'all', open: 'any', barre: 'any', bass: 'root', min: 4 };
+    [['region', 'all'], ['copen', 'any'], ['cbarre', 'any'], ['cbass', 'root'], ['cmin', '4']].forEach(([id, v]) => setSeg(id, v));
+    refreshDropdowns(); state.cvoice = null; renderAcordes();
+  };
 
   const card = (v, id, head, foot) =>
     `<button type="button" class="vc ${state.cvoice === id ? 'active' : ''}" data-id="${id}">${head}${chordSvg(v, rootPc, names)}<small>${foot}</small>` +

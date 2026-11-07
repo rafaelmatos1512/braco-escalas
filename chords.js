@@ -39,7 +39,7 @@ export function generateVoicings(rootPc, iv) {
   const required = new Set(pcs);
   if (pcs.size >= 4 && iv.includes(7)) required.delete((rootPc + 7) % 12); // quinta opcional
   const seen = new Set(), out = [];
-  for (let base = 1; base <= 12; base++) {
+  for (let base = 1; base <= 21; base++) { // base + 3 chega à casa 24
     const opts = [];
     for (let s = 0; s < 6; s++) {
       const o = [-1];
@@ -61,7 +61,7 @@ export function generateVoicings(rootPc, iv) {
   return out.sort((a, b) => a.score - b.score);
 }
 
-const REGIONS = { '1': [0, 4], '2': [5, 8], '3': [9, 12], '4': [13, 15] };
+const REGIONS = { '1': [0, 4], '2': [5, 8], '3': [9, 12], '4': [13, 24] };
 
 export function filterVoicings(list, f) {
   return list.filter(v => {
