@@ -160,9 +160,25 @@ export const CHORD_TYPES = {
     desc: 'Acorde maior com a nona, sem a sétima. Soa brilhante e aberto, muito usado no pop, no rock e no gospel.' },
   '7#9': { label: 'Sétima com nona aumentada (7#9)', suffix: '7(#9)', iv: [0,4,7,10,3], letters: [0,2,4,6,1], ivNames: ['1','3','5','b7','#9'],
     desc: 'O "acorde do Hendrix". Mistura o maior e o menor ao mesmo tempo, som sujo e marcante do blues-rock e do funk.' },
+  m6: { label: 'Menor com sexta (m6)', suffix: 'm6', iv: [0,3,7,9],
+    desc: 'Acorde menor com uma nota a mais. Soa misterioso e elegante, comum na bossa nova e no jazz.' },
+  dim7: { label: 'Diminuto com sétima (°7)', suffix: '°7', iv: [0,3,6,9], letters: [0,2,4,6], ivNames: ['1','b3','b5','bb7'],
+    desc: 'Diminuto com uma nota a mais. Muito tenso, ótimo para passar de um acorde a outro. Muito usado no choro e no samba.' },
+  '7sus4': { label: 'Sétima com quarta (7sus4)', suffix: '7sus4', iv: [0,5,7,10], ivNames: ['1','4','5','b7'],
+    desc: 'Parecido com o 7, mas troca a nota que define maior ou menor pela quarta. Soa em suspense e costuma voltar para o 7.' },
+  m9: { label: 'Menor com nona (m9)', suffix: 'm9', iv: [0,3,7,10,2],
+    desc: 'Menor com sétima e mais uma nota. Soa suave e sofisticado, comum no jazz, no soul e na bossa nova.' },
+  maj9: { label: 'Sétima maior com nona (maj9)', suffix: 'maj9', iv: [0,4,7,11,2],
+    desc: 'Sétima maior com mais uma nota. Soa aberto e sonhador, muito usado na bossa nova e no jazz.' },
+  '13': { label: 'Com décima terceira (13)', suffix: '13', iv: [0,4,7,10,9], ivNames: ['1','3','5','b7','13'],
+    desc: 'Acorde com 7 e uma nota bem aguda por cima. Soa rico e cheio de balanço, comum no blues, no samba e no jazz.' },
+  '7b9': { label: 'Sétima com nona menor (7b9)', suffix: '7(b9)', iv: [0,4,7,10,1], letters: [0,2,4,6,1],
+    desc: 'Acorde com 7 e uma nota bem tensa. Pede muito para resolver no acorde seguinte, comum no choro e no jazz.' },
   '6/9': { label: 'Sexta com nona (6/9)', suffix: '6/9', iv: [0,4,9,2],
     desc: 'Acorde maior com a sexta e a nona. Soa suave e "final", muito usado para terminar músicas na bossa nova e no jazz.' },
 };
+// ordem de mostrar: dos mais comuns aos mais raros (o JavaScript põe chaves como '7' antes das outras no objeto)
+export const CHORD_ORDER = ['maior', 'menor', '7', 'm7', 'maj7', '6', 'm6', '9', 'm9', 'maj9', '13', 'add9', '6/9', 'sus2', 'sus4', '7sus4', 'dim', 'dim7', 'aug', 'm7b5', '7b9', '7#9', '5'];
 const INTERVAL_NAME = { 0: '1', 1: 'b9', 2: '9', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5', 8: '#5', 9: '6', 10: 'b7', 11: '7' };
 export const intervalNames = t => t.ivNames || t.iv.map(i => INTERVAL_NAME[i % 12]);
 
@@ -237,8 +253,8 @@ const DEG_OF = {
   maior: [[0, 0], [1, -1], [1, 0], [2, -1], [2, 0], [3, 0], [3, 1], [4, 0], [5, -1], [5, 0], [6, -1], [6, 0]],
   menor: [[0, 0], [1, -1], [1, 0], [2, 0], [2, 1], [3, 0], [3, 1], [4, 0], [5, 0], [5, 1], [6, 0], [6, 1]],
 };
-const LOWER = new Set(['menor', 'm7', 'dim', 'm7b5']);
-const ROMAN_SUF = { menor: '', m7: '7', m7b5: 'ø', dim: '°', maior: '', '5': '5' };
+const LOWER = new Set(['menor', 'm7', 'dim', 'm7b5', 'm6', 'm9', 'dim7']);
+const ROMAN_SUF = { menor: '', m7: '7', m7b5: 'ø', dim: '°', dim7: '°7', m6: '6', m9: '9', maior: '', '5': '5' };
 // converte acordes de uma progressão pronta em itens editáveis (distância até o tom + tipo)
 export const itemsFromChords = (key, chords) => chords.map(c => ({ o: (c.rootPc - key + 12) % 12, t: c.type }));
 

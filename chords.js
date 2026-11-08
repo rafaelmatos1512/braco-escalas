@@ -135,6 +135,16 @@ export function neckPositions(rootPc, type, iv) {
   return withOctaves(best);
 }
 
+// todas as formas com a nota principal no grave: primeiro as espalhadas pelo braço, depois as outras, da mais fácil para a mais difícil
+export function allPositions(rootPc, type, iv) {
+  const out = [], seen = new Set();
+  for (const v of [...neckPositions(rootPc, type, iv), ...generateVoicings(rootPc, iv).filter(x => x.bassIsRoot)]) {
+    const k = v.frets.join(',');
+    if (!seen.has(k)) { seen.add(k); out.push(v); }
+  }
+  return out;
+}
+
 // acha na lista a forma com estas casas (null se não houver: forma antiga ou inválida)
 export const findVoicing = (list, frets) => (Array.isArray(frets) && list.find(v => v.frets.length === frets.length && v.frets.every((f, i) => f === frets[i]))) || null;
 

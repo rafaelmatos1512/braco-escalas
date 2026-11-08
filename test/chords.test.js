@@ -44,3 +44,16 @@ test('Mais agudo (13+) tem formas em todos os acordes e tons, sem passar da casa
     }
   }
 });
+
+test('allPositions traz mais formas que as espalhadas, sem repetir e com a nota principal no grave', async () => {
+  const { allPositions, neckPositions } = await import('../chords.js');
+  for (const [type, t] of Object.entries(CHORD_TYPES)) {
+    if (type === '5') continue;
+    for (let r = 0; r < 12; r++) {
+      const all = allPositions(r, type, t.iv), keys = all.map(v => v.frets.join(','));
+      assert.equal(new Set(keys).size, keys.length);
+      assert.ok(all.length >= neckPositions(r, type, t.iv).length);
+    }
+  }
+  assert.ok(allPositions(0, 'maior', CHORD_TYPES.maior.iv).length > 12);
+});

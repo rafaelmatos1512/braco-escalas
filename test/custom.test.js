@@ -44,3 +44,8 @@ test('personalizar: toda progressão pronta vira itens e mantém os mesmos acord
     assert.deepEqual(mine.map(c => c.name), ready.map(c => c.name), `${pr.name} em ${key}`);
   }
 });
+
+test('CHORD_ORDER tem todos os tipos, sem repetir', async () => {
+  const { CHORD_ORDER } = await import('../music.js');
+  assert.deepEqual([...CHORD_ORDER].sort(), Object.keys(CHORD_TYPES).sort());
+});

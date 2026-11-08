@@ -99,6 +99,7 @@
         </div>
         <h3>Todas as formas encontradas</h3>
         <div id="voicings" class="grid"></div>
+        <div id="cMore"></div>
         <div id="voiceInfo" class="box" hidden></div>
         <div class="opts"><label>Braço <select id="frets2"><option value="24">Todo (24 casas)</option><option value="12">12 casas</option></select><small class="hint">Quantas casas mostrar no braço lá embaixo.</small></label></div>
         <div class="board-wrap" id="board2wrap" hidden><div id="board2"></div></div>
@@ -142,14 +143,6 @@
     </div>
     </div></div>
     <div id="pPick">
-      <div class="legend-box"><b>Como criar a sua progressão</b>
-        <ol class="steps-train">
-          <li>Desça a tela até <b>Minhas progressões</b>, depois da lista abaixo, e toque em <b>+ Criar uma progressão</b>.</li>
-          <li>Escreva um nome para ela.</li>
-          <li>Toque nos acordes, um de cada vez, na ordem da música.</li>
-          <li>Toque em <b>Guardar a progressão</b>.</li>
-        </ol>
-      </div>
       <h3>Progressões mais usadas — toque numa</h3>
       <div id="pList" class="plist"></div>
       <h3>Minhas progressões</h3>
@@ -163,7 +156,9 @@
     <div class="legend-box" data-chord-legend></div>
     <h3 id="pPosTitle">Trocar a forma deste acorde (casas 0 a 24)</h3>
     <p id="pPosHint" class="hint"></p>
+    <div id="pPosTools" class="roots"></div>
     <div id="pPositions" class="grid"></div>
+    <div id="pPosMore"></div>
   </section>
 
   <section id="tab-aprender" hidden>
@@ -235,6 +230,7 @@
         <li>Toque numa <b>progressão</b> da lista (por exemplo I – IV – V).</li>
         <li>Aparecem os acordes da sequência. <b>Toque num acorde</b> para ouvir e ver onde ele fica no braço.</li>
         <li><b>Tocar a progressão</b>: toca a sequência inteira, acendendo cada acorde. <b>Parar</b> interrompe.</li>
+        <li><b>Trocar a forma</b>: abaixo do braço, toque num desenho para usá-lo naquele acorde. <b>Parte do braço</b> filtra os desenhos, e <b>Ver mais formas</b> mostra outros.</li>
       </ol>
       <p>Os acordes aparecem <b>em ordem, um ao lado do outro</b>, cada um com o desenho de como tocar.</p>
       <p><button type="button" class="go-tab" data-go="progressoes">Abrir a tela Progressões →</button></p></details>
@@ -295,6 +291,7 @@
         <li><b>Nota mais grave</b>: "Nota do acorde" é o normal (a nota que dá nome ao acorde fica embaixo). "Qualquer" mostra também as inversões.</li>
         <li><b>Cordas tocadas</b>: quantas cordas soam. "Todas as 6" dá o som mais cheio; "4 ou mais" inclui formas mais fáceis.</li>
         <li><b>Braço</b>: quantas casas aparecem no desenho grande do braço, lá embaixo.</li>
+        <li><b>Ver mais formas</b>: fica abaixo dos desenhos e mostra mais 40. <b>Ver menos</b> volta para o começo da lista.</li>
       </ul>
       <p>Se aparecer "Nenhuma forma com esses filtros", volte algum filtro para "Sim" ou "Qualquer".</p>
       <p><button type="button" class="go-tab" data-go="acordes">Abrir a tela Acordes →</button></p></details>
@@ -329,7 +326,7 @@
 
     <details class="guide"><summary><span class="gi" data-icon="aprender"></span>Dicas</summary>
       <ul>
-        <li>Ele lembra das suas escolhas: tema, tamanho da letra, som e a última tela aberta.</li>
+        <li>Ele lembra das suas escolhas: tema, tamanho da letra e som.</li>
       </ul></details>
 
     <h2 class="sec">Aprender música</h2>

@@ -1,8 +1,8 @@
-import { SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, TUNING, noteName, noteAt, ptName, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, spellChordFromRoot, PROGRESSIONS, progressionChords, customChords, itemsFromChords,
-  scaleNotes, harmonicField, degreeLabels } from './music.js';
+import { CHORD_ORDER, SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, noteName, noteAt, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, spellChordFromRoot, PROGRESSIONS, progressionChords, customChords, itemsFromChords,
+  scaleNotes, harmonicField } from './music.js';
 import { midiAt, playNote, strum, sequence, schedule, stopAll, soundOn, setSound } from './audio.js';
 import { STRINGS as TSTR, nearestString, centsToString, tuneStatus, startMic, stopMic, micOn } from './tuner.js';
-import { generateVoicings, filterVoicings, cagedShapes, hasCaged, neckPositions, findVoicing, powerChords, stringSetTriads } from './chords.js';
+import { generateVoicings, filterVoicings, cagedShapes, hasCaged, neckPositions, allPositions, findVoicing, powerChords, stringSetTriads } from './chords.js';
 
 const $ = id => document.getElementById(id);
 const state = {
@@ -202,7 +202,10 @@ function voiceSlot(i) {
     },
   };
 }
-const chordPositions = c => neckPositions(c.rootPc, c.type, CHORD_TYPES[c.type].iv);
+const posMemo = {};
+const POS_PAGE = 12;
+const chordPositions = c => posMemo[c.rootPc + ':' + c.type] || (posMemo[c.rootPc + ':' + c.type] =
+  c.type === '5' ? powerChords(c.rootPc) : allPositions(c.rootPc, c.type, CHORD_TYPES[c.type].iv)); // power chord usa só 2 ou 3 cordas: o gerador comum não acha
 
 function stopProg() { if (state.p.playing) { stopAll(); state.p.playing = false; } }
 function curProg() {
@@ -223,6 +226,16 @@ const seqCards = (chords, step) => '<div class="pseq">' + chords.map((x, i) => {
 }).join('') + '</div>';
 
 // entrar ou sair da montagem muda muito a altura da página: vai direto ao ponto certo, sem o pulo
+// nas formas do acorde: se a lista encolher, a sobra fica no fim da página, nunca no meio
+const posHold = () => {
+  const more = $('pPosMore'), top = $('pPosTools').getBoundingClientRect().top;
+  renderProgressoes();
+  more.style.paddingBottom = '';
+  const delta = $('pPosTools').getBoundingClientRect().top - top;
+  const lack = scrollY + delta + innerHeight - document.documentElement.scrollHeight;
+  if (lack > 0) more.style.paddingBottom = lack + 'px';
+  tabJump = true; scrollBy(0, delta);
+};
 const jumpTo = id => { tabJump = true; $(id).scrollIntoView(); };
 
 // o tom e o modo ficam dentro do quadro de criar enquanto se monta a progressão
@@ -230,6 +243,7 @@ const pTop = $('pTop'), pTopHome = $('pTopHome');
 function renderProgressoes() {
   const p = state.p, ed = p.ed, list = PROGRESSIONS[p.mode];
   pTopHome.appendChild(pTop);
+  const delArmed = p.delArm; p.delArm = null; // o pedido de excluir só vale se o próximo toque for de novo em excluir
   $('pTomTitle').textContent = ed ? '2º Tom da música' : 'Tom da música';
   $('pTomHint').hidden = !ed;
   $('plabels').closest('label').hidden = !!ed;
@@ -275,7 +289,7 @@ function renderProgressoes() {
     html += `<p><b>${c.name}</b> (${ptOf(c.rootName)}, ${t.label.toLowerCase()}): notas <b>${c.names.join(' - ')}</b>.</p>`;
   }
   if (cur.mine && !ed) {
-    const armed = p.delArm === myProgs[p.mine].id;
+    const armed = delArmed === myProgs[p.mine].id;
     html += '<p><button type="button" class="link" id="pEdit">Mudar esta progressão (pôr, tirar ou trocar acordes)</button> ' +
       `<button type="button" class="link danger" id="pDelMine">${armed ? 'Toque de novo para excluir de vez' : 'Excluir esta progressão'}</button></p>`;
   }
@@ -295,8 +309,8 @@ function renderProgressoes() {
   };
   if ($('pDelMine')) $('pDelMine').onclick = () => {
     const id = myProgs[p.mine].id;
-    if (p.delArm !== id) { p.delArm = id; renderProgressoes(); return; } // pede dois toques para evitar engano
-    stopProg(); p.delArm = null; myProgs = myProgs.filter(m => m.id !== id); saveMine();
+    if (delArmed !== id) { p.delArm = id; renderProgressoes(); return; } // pede dois toques para evitar engano
+    stopProg(); myProgs = myProgs.filter(m => m.id !== id); saveMine();
     p.src = 'ready'; p.step = 0; p.pos = null; renderProgressoes(); jumpTo('pDetail');
   };
   if ($('pCustom')) $('pCustom').onclick = () => {
@@ -306,7 +320,6 @@ function renderProgressoes() {
     renderProgressoes(); jumpTo('pDetail');
   };
   if ($('pEdit')) $('pEdit').onclick = () => {
-    p.delArm = null;
     stopProg(); const m = myProgs[p.mine];
     p.ed = { id: m.id, name: m.name, items: m.items.map(x => ({ ...x })), root: p.key, msg: '', del: false }; renderProgressoes(); jumpTo('pDetail');
   };
@@ -314,17 +327,34 @@ function renderProgressoes() {
   else $('pEditor').innerHTML = '';
 
   const show = !!c;
-  ['board3', 'pPositions', 'pPosHint'].forEach(id => $(id).hidden = !show);
+  ['board3', 'pPositions', 'pPosHint', 'pPosTools', 'pPosMore'].forEach(id => $(id).hidden = !show);
   $('pPosTitle').hidden = !show;
   if (!show) return;
   const t = CHORD_TYPES[c.type], shown = labelMap(c.pcs, c.names, t, p.labels);
   const pos = chordPositions(c), slot = voiceSlot(p.step), v = findVoicing(pos, slot.get());
-  const sel = v ? pos.indexOf(v) : null;
-  $('pPosTitle').textContent = `Trocar a forma de ${c.name} (casas 0 a 24)`;
+    $('pPosTitle').textContent = `Trocar a forma de ${c.name} (casas 0 a 24)`;
   $('pPosHint').innerHTML = v
     ? `<b>${c.name} agora usa a forma da ${v.minF > 0 ? 'casa ' + v.minF : 'posição aberta'}</b> nesta progressão, neste tom. Toque nela de novo para voltar à forma normal.`
     : `Toque numa forma: ela passa a ser a usada no ${p.step + 1}º acorde, lá em cima na sequência, e fica guardada.`;
-  positionCards($('pPositions'), pos, c.rootPc, shown, sel, i => { slot.set(i === null ? null : pos[i].frets); renderProgressoes(); });
+  // região e "ver mais": a lista pode ter dezenas de formas
+  const chordId = c.rootPc + ':' + c.type;
+  if (p.posChord !== chordId) { p.posChord = chordId; p.posLimit = POS_PAGE; }
+  const region = p.posRegion || 'all';
+  const found = filterVoicings(pos, { region, open: 'any', barre: 'any', bass: 'any', min: 0 });
+  let page = found.slice(0, p.posLimit);
+  if (v && !page.includes(v) && found.includes(v)) page = [v, ...page.slice(0, -1)]; // a forma escolhida sempre aparece
+  $('pPosTools').innerHTML = '<b>Parte do braço:</b> ' + [['all', 'Todas'], ['1', 'Início (1–4)'], ['2', 'Meio (5–8)'], ['3', 'Agudo (9–12)'], ['4', 'Mais agudo (13+)']]
+    .map(([k, l]) => `<button type="button" data-r="${k}" class="${k === region ? 'on' : ''}">${l}</button>`).join('');
+  $('pPosTools').querySelectorAll('button').forEach(b => b.onclick = () => {
+    p.posRegion = b.dataset.r; p.posLimit = POS_PAGE; posHold();
+  });
+  if (v && !found.includes(v)) $('pPosHint').innerHTML += ' A forma escolhida fica em outra parte do braço: toque em <b>Todas</b> para vê-la.';
+  positionCards($('pPositions'), page, c.rootPc, shown, v ? page.indexOf(v) : null, i => { slot.set(i === null ? null : page[i].frets); posHold(); });
+  $('pPosMore').innerHTML = (!found.length ? `<p>Nenhuma forma de ${c.name} nesta parte do braço. Escolha outra parte.</p>` : `<p class="hint">Mostrando ${page.length} de ${found.length} formas.</p>`) +
+    (found.length > p.posLimit ? `<button type="button" class="link" id="pMoreF">Ver mais formas</button> ` : '') +
+    (p.posLimit > POS_PAGE ? '<button type="button" class="link" id="pLessF">Ver menos</button>' : '');
+  if ($('pMoreF')) $('pMoreF').onclick = () => { p.posLimit += POS_PAGE; posHold(); };
+  if ($('pLessF')) $('pLessF').onclick = () => { p.posLimit = POS_PAGE; renderProgressoes(); $('pPosTitle').scrollIntoView(); tabJump = true; };
   drawBoard($('board3'), 24, { inScale: new Set(c.pcs), names: shown, rootPc: c.rootPc, all: false, exact: v ? v.frets : null });
 }
 
@@ -332,9 +362,10 @@ function renderProgressoes() {
 function renderEditor(chords, keyName, scale) {
   const p = state.p, ed = p.ed;
   const field = harmonicField(p.key, scale, state.sharps), notes = scaleNotes(p.key, scale);
-  const ro = (ed.root - p.key + 12) % 12, types = ['maior', 'menor', ...Object.keys(CHORD_TYPES).filter(t => t !== 'maior' && t !== 'menor')];
+  const ro = (ed.root - p.key + 12) % 12, types = CHORD_ORDER;
   const byType = customChords(p.key, p.mode, types.map(t => ({ o: ro, t })), state.sharps);
-  const cancelBtn = `<button type="button" class="link danger" data-cancel>${ed.cancel ? 'Toque de novo para cancelar' : ed.id ? 'Cancelar as mudanças' : 'Cancelar progressão'}</button>`;
+  const cancelArmed = ed.cancel, delAllArmed = ed.del; ed.cancel = ed.del = false; // dois toques só valem em seguida
+  const cancelBtn = `<button type="button" class="link danger" data-cancel>${cancelArmed ? 'Toque de novo para cancelar' : ed.id ? 'Cancelar as mudanças' : 'Cancelar progressão'}</button>`;
   const seqNames = chords.map(x => x.name);
   const live = `<div class="elive" aria-live="polite"><b>Sua sequência${seqNames.length ? ` (${seqNames.length})` : ''}:</b> ${seqNames.length ? (seqNames.length > 8 ? '… ' : '') + seqNames.slice(-8).join(' – ') : 'ainda vazia'}<p class="emsg">${ed.msg}</p>${cancelBtn}</div>`;
   $('pEditor').innerHTML = live +
@@ -348,14 +379,14 @@ function renderEditor(chords, keyName, scale) {
     '<h3><b>4º</b> Confira a sequência</h3><p class="hint">Ela aparece lá em cima, na ordem da música. Toque num acorde para ouvir e para mover, repetir ou tirar.</p>' +
     '<h3><b>5º</b> Guarde</h3><p class="hint">Depois de guardar, ela fica em <b>Minhas progressões</b>, para abrir quando quiser.</p>' +
     '<div class="dlg-actions"><button type="button" class="play" id="eSave">Guardar a progressão</button>' + cancelBtn +
-    (ed.id ? `<button type="button" class="link danger" id="eDelAll">${ed.del ? 'Toque de novo para apagar de vez' : 'Apagar esta progressão'}</button>` : '') + '</div>';
+    (ed.id ? `<button type="button" class="link danger" id="eDelAll">${delAllArmed ? 'Toque de novo para apagar de vez' : 'Apagar esta progressão'}</button>` : '') + '</div>';
   $('eTom').appendChild(pTop);
   $('eName').oninput = e => { ed.name = e.target.value; };
   rootButtons($('eRoots'), ed.root, r => { ed.root = r; ed.msg = `Agora toque no tipo de acorde de ${dual(r)}, nos botões logo abaixo das notas.`; renderProgressoes(); });
   const add = (o, t) => {
     stopProg();
     if (ed.items.length >= MAX_ITEMS) { ed.msg = `O limite é de ${MAX_ITEMS} acordes.`; renderProgressoes(); return; }
-    ed.items.push({ o, t }); ed.msg = `✓ ${customChords(p.key, p.mode, [{ o, t }], state.sharps)[0].name} entrou como ${ed.items.length}º acorde.`; ed.del = false; ed.cancel = false; p.step = ed.items.length - 1; p.pos = null;
+    ed.items.push({ o, t }); ed.msg = `✓ ${customChords(p.key, p.mode, [{ o, t }], state.sharps)[0].name} entrou como ${ed.items.length}º acorde.`; p.step = ed.items.length - 1; p.pos = null;
     strumV(bestVoicing((p.key + o) % 12, t));
     // a sequência cresce: mantém o quadro dos acordes parado sob o dedo
     const top = $('pEditor').getBoundingClientRect().top;
@@ -383,11 +414,11 @@ function renderEditor(chords, keyName, scale) {
     renderProgressoes(); jumpTo('pDetail');
   };
   $('pEditor').querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => {
-    if (ed.items.length && !ed.cancel) { ed.cancel = true; renderProgressoes(); return; } // pede dois toques para não perder o que já montou
+    if (ed.items.length && !cancelArmed) { ed.cancel = true; renderProgressoes(); return; } // pede dois toques para não perder o que já montou
     stopProg(); p.ed = null; p.pos = null; renderProgressoes(); jumpTo('pDetail');
   });
   if ($('eDelAll')) $('eDelAll').onclick = () => {
-    if (!ed.del) { ed.del = true; renderProgressoes(); return; }
+    if (!delAllArmed) { ed.del = true; renderProgressoes(); return; }
     stopProg(); myProgs = myProgs.filter(m => m.id !== ed.id); saveMine();
     p.ed = null; p.src = 'ready'; p.step = 0; p.pos = null; renderProgressoes(); jumpTo('pDetail');
   };
@@ -493,8 +524,13 @@ function fieldDetail(f, where) {
     <p>${playBtn('fPlay', 'Ouvir')} <button type="button" class="link" id="fMore">Ver todas as formas e o braço inteiro →</button></p>
     <div class="shapes">${shapes.map((v, i) => `<button type="button" class="vc" data-i="${i}">${chordSvg(v, f.notes[0], names)}<small>${v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta'}</small></button>`).join('')}</div>`;
 }
+function clearChordFilters() {
+  state.cf = { region: 'all', open: 'any', barre: 'any', bass: 'root', min: 4 };
+  [['region', 'all'], ['copen', 'any'], ['cbarre', 'any'], ['cbass', 'root'], ['cmin', '4']].forEach(([id, v]) => setSeg(id, v));
+  refreshDropdowns();
+}
 function goChord(pc, type) {
-  state.croot = pc; state.ctype = type; state.cvoice = null;
+  state.croot = pc; state.ctype = type; state.cvoice = null; clearChordFilters();
   fillChordSelects(); setTab('acordes');
 }
 
@@ -505,11 +541,13 @@ const bestVoicing = (rootPc, type) => type === '5' ? powerChords(rootPc)[0]
   : (voicingsOf(rootPc, type).find(v => v.bassIsRoot) || voicingsOf(rootPc, type)[0]);
 const strumV = v => { if (v) strum(v.frets); };
 const playBtn = (id, text) => `<button type="button" class="play" id="${id}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg><span>${text}</span></button>`;
-const MAX_SHOW = 40;
+const SHOW_STEP = 40;
 function renderAcordes() {
   const t = CHORD_TYPES[state.ctype], rootPc = state.croot;
   const all = voicingsOf(rootPc, state.ctype);
-  const filtered = filterVoicings(all, state.cf), list = filtered.slice(0, MAX_SHOW);
+  const filtered = filterVoicings(all, state.cf), cKey = rootPc + ':' + state.ctype + ':' + JSON.stringify(state.cf);
+  if (state.cKey !== cKey) { state.cKey = cKey; state.cLimit = SHOW_STEP; }
+  const list = filtered.slice(0, state.cLimit);
   const pcs = t.iv.map(i => (rootPc + i) % 12);
   const cn = spelledChord(rootPc, t.iv, state.sharps, t.letters), names = nameMap(pcs, cn);
   const cg = hasCaged(state.ctype), caged = cg ? cagedShapes(rootPc, state.ctype) : [];
@@ -520,25 +558,25 @@ function renderAcordes() {
 
   const count = !filtered.length
     ? 'Nenhuma forma com esses filtros. O acorde existe: os filtros é que estão apertados demais.'
-    : filtered.length > MAX_SHOW
-      ? `Mostrando as ${MAX_SHOW} formas mais fáceis (de ${filtered.length} encontradas). Toque numa para ver os detalhes.`
+    : filtered.length > list.length
+      ? `Mostrando as ${list.length} formas mais fáceis (de ${filtered.length} encontradas). Toque numa para ver os detalhes.`
       : `${filtered.length} forma${filtered.length === 1 ? '' : 's'} de tocar, das mais fáceis para as mais difíceis. Toque numa para ver os detalhes.`;
   $('chordInfo').innerHTML =
     `<p><b>${cn[0]}${t.suffix}</b> — ${ptOf(cn[0])} ${t.label.toLowerCase()}</p>` +
     `<p>Notas do acorde: <b>${cn.join(' - ')}</b></p><p>${t.desc}</p><p>${count}</p>` +
     (filtered.length ? '' : '<p><button type="button" class="link" id="clearCf">Limpar os filtros e ver as formas</button></p>') +
     `<p>${playBtn('playChord', 'Ouvir o acorde')}</p>`;
-  if ($('clearCf')) $('clearCf').onclick = () => {
-    state.cf = { region: 'all', open: 'any', barre: 'any', bass: 'root', min: 4 };
-    [['region', 'all'], ['copen', 'any'], ['cbarre', 'any'], ['cbass', 'root'], ['cmin', '4']].forEach(([id, v]) => setSeg(id, v));
-    refreshDropdowns(); state.cvoice = null; renderAcordes();
-  };
+  if ($('clearCf')) $('clearCf').onclick = () => { clearChordFilters(); state.cvoice = null; renderAcordes(); };
 
   const card = (v, id, head, foot) =>
     `<button type="button" class="vc ${state.cvoice === id ? 'active' : ''}" data-id="${id}">${head}${chordSvg(v, rootPc, names)}<small>${foot}</small>` +
     (v.barre ? '<span class="tag">pestana</span>' : '') + (v.hasOpen ? '<span class="tag">cordas soltas</span>' : '') + '</button>';
   const where = v => v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta';
 
+  $('cMore').innerHTML = (filtered.length > list.length ? '<button type="button" class="link" id="cMoreB">Ver mais formas</button> ' : '') +
+    (state.cLimit > SHOW_STEP ? '<button type="button" class="link" id="cLessB">Ver menos</button>' : '');
+  if ($('cMoreB')) $('cMoreB').onclick = () => { state.cLimit += SHOW_STEP; renderAcordes(); };
+  if ($('cLessB')) $('cLessB').onclick = () => { state.cLimit = SHOW_STEP; if (state.cvoice && +state.cvoice.slice(1) >= SHOW_STEP && state.cvoice[0] === 'v') state.cvoice = null; renderAcordes(); $('voicings').scrollIntoView(); tabJump = true; };
   $('cagedWrap').hidden = !cg;
   $('caged').innerHTML = caged.map((v, i) => card(v, 'c' + i, `<b class="shape">Forma de ${v.shape}</b>`, where(v))).join('');
   $('voicings').innerHTML = list.map((v, i) =>
@@ -562,7 +600,7 @@ function renderAcordes() {
   drawBoard($('board2'), v ? (v.maxF > 12 ? 24 : 12) : state.frets2, { inScale: new Set(pcs), names, rootPc, all: false, exact: v ? v.frets : null });
 }
 function fillChordSelects() {
-  if (!$('ctype').options.length) Object.entries(CHORD_TYPES).filter(([k]) => k !== '5').forEach(([k, t]) => $('ctype').add(new Option(t.label, k)));
+  if (!$('ctype').options.length) CHORD_ORDER.filter(k => k !== '5').forEach(k => $('ctype').add(new Option(CHORD_TYPES[k].label, k)));
   $('ctype').value = state.ctype;
 }
 
@@ -573,7 +611,7 @@ function fillRoots() {
   r.value = state.root; fillChordSelects(); refreshDropdowns();
 }
 function render() {
-  try { renderTab(); } catch (err) {
+  try { renderTab(); $('tab-' + state.tab).querySelector('.err')?.remove(); } catch (err) {
     console.error(err);
     const sec = $('tab-' + state.tab);
     if (sec && !sec.querySelector('.err')) sec.insertAdjacentHTML('afterbegin', '<div class="box err">Algo deu errado. Recarregue a página.</div>');
