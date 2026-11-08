@@ -269,6 +269,7 @@ function renderProgressoes() {
   rootButtons($('pKeys'), p.key, k => { stopProg(); p.key = k; p.pos = null; renderProgressoes(); });
   $('pPick').hidden = !!ed;
   $('pEditor').hidden = !ed;
+  $('tab-progressoes').classList.toggle('editing', !!ed); // montando: quadro de cima e de baixo viram uma caixa só
 
   // listas: prontas e as minhas
   renderPList();
@@ -363,8 +364,9 @@ function renderProgressoes() {
   });
   if (v && !found.includes(v)) $('pPosHint').innerHTML += ' A forma escolhida fica em outra parte do braço: toque em <b>Todas</b> para vê-la.';
   positionCards($('pPositions'), page, c.rootPc, shown, v ? page.indexOf(v) : null, i => { slot.set(i === null ? null : page[i].frets); posHold(); if (i !== null) { tabJump = true; $('board3').scrollIntoView({ behavior: 'smooth', block: 'center' }); } });
-  $('pPosMore').innerHTML = (!found.length ? `<p>Nenhuma forma de ${c.name} nesta parte do braço. Escolha outra parte.</p>` : `<p class="hint">Mostrando ${page.length} de ${found.length} formas.</p>`) +
-    (found.length > p.posLimit ? `<button type="button" class="link" id="pMoreF">Ver mais formas</button> ` : '') +
+  $('pPosMore').innerHTML = !found.length ? `<p>Nenhuma forma de ${c.name} nesta parte do braço. Escolha outra parte.</p>` : '';
+  $('pPosMoreTop').innerHTML = (found.length ? `<span class="hint">${page.length} de ${found.length}</span>` : '') +
+    (found.length > p.posLimit ? '<button type="button" class="link" id="pMoreF">Ver mais</button>' : '') +
     (p.posLimit > POS_PAGE ? '<button type="button" class="link" id="pLessF">Ver menos</button>' : '');
   if ($('pMoreF')) $('pMoreF').onclick = () => { p.posLimit += POS_PAGE; posHold(); };
   if ($('pLessF')) $('pLessF').onclick = () => { p.posLimit = POS_PAGE; renderProgressoes(); $('pPosTitle').scrollIntoView(); tabJump = true; };
@@ -379,8 +381,7 @@ function renderEditor(chords, keyName, scale) {
   const byType = customChords(p.key, p.mode, types.map(t => ({ o: ro, t })), state.sharps);
   const cancelArmed = ed.cancel, delAllArmed = ed.del; ed.cancel = ed.del = false; // dois toques só valem em seguida
   const cancelBtn = `<button type="button" class="link danger" data-cancel>${cancelArmed ? 'Toque de novo para cancelar' : ed.id ? 'Cancelar as mudanças' : 'Cancelar progressão'}</button>`;
-  const seqNames = chords.map(x => x.name);
-  const live = `<div class="elive" aria-live="polite"><b>Sua sequência${seqNames.length ? ` (${seqNames.length})` : ''}:</b> ${seqNames.length ? (seqNames.length > 8 ? '… ' : '') + seqNames.slice(-8).join(' – ') : 'ainda vazia'}<p class="emsg">${ed.msg}</p>${cancelBtn}</div>`;
+  const live = `<div class="elive" aria-live="polite"><p class="emsg">${ed.msg}</p></div>`;
   $('pEditor').innerHTML = live +
     `<label class="ename"><span>1º Nome da progressão</span><input id="eName" maxlength="40" placeholder="Ex.: Música da festa" value="${esc(ed.name)}"><small class="hint">Escreva um nome para achar depois. Se deixar vazio, o aplicativo dá um nome sozinho.</small></label>` +
     '<div id="eTom"></div>' +
@@ -426,7 +427,7 @@ function renderEditor(chords, keyName, scale) {
     p.ed = null; p.src = 'mine'; p.mine = i >= 0 ? i : myProgs.length - 1; p.pos = null;
     renderProgressoes(); jumpTo('pDetail');
   };
-  $('pEditor').querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tab-progressoes [data-cancel]').forEach(b => b.onclick = () => {
     if (ed.items.length && !cancelArmed) { ed.cancel = true; renderProgressoes(); return; } // pede dois toques para não perder o que já montou
     stopProg(); p.ed = null; p.pos = null; renderProgressoes(); jumpTo('pDetail');
   });
@@ -590,7 +591,7 @@ function renderAcordes() {
     (state.cLimit > SHOW_STEP ? '<button type="button" class="link cLessB">Ver menos</button>' : '');
   $('cMore').innerHTML = $('cMoreTop').innerHTML = moreHtml;
   document.querySelectorAll('.cMoreB').forEach(b => b.onclick = () => { state.cLimit += SHOW_STEP; renderAcordes(); });
-  document.querySelectorAll('.cLessB').forEach(b => b.onclick = () => { state.cLimit = SHOW_STEP; if (state.cvoice && +state.cvoice.slice(1) >= SHOW_STEP && state.cvoice[0] === 'v') state.cvoice = null; renderAcordes(); $('voicings').scrollIntoView(); tabJump = true; });
+  document.querySelectorAll('.cLessB').forEach(b => b.onclick = () => { state.cLimit = SHOW_STEP; if (state.cvoice && +state.cvoice.slice(1) >= SHOW_STEP && state.cvoice[0] === 'v') state.cvoice = null; renderAcordes(); $('voicings').scrollTop = 0; $('voicings').scrollIntoView(); tabJump = true; });
   $('cagedWrap').hidden = !cg;
   $('caged').innerHTML = caged.map((v, i) => card(v, 'c' + i, `<b class="shape">Forma de ${v.shape}</b>`, where(v))).join('');
   $('voicings').innerHTML = list.map((v, i) =>
