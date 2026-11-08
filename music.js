@@ -137,6 +137,22 @@ export function harmonicField(root, name, useSharps) {
   });
 }
 
+// campo harmônico com sétima (tétrades): Imaj7, ii7, iii7, IVmaj7, V7, vi7, viiø na escala maior
+const SEVENTH = { 'maior:11': ['maj7', 'maj7'], 'maior:10': ['7', '7'], 'menor:10': ['m7', '7'], 'menor:11': ['mmaj7', '(maj7)'],
+  'dim:10': ['m7b5', 'ø'], 'dim:9': ['dim7', '°7'] };
+export function harmonicField7(root, name, useSharps) {
+  const f = harmonicField(root, name, useSharps);
+  if (!f) return null;
+  const n = scaleNotes(root, name);
+  return f.map((c, i) => {
+    const sev = (n[(i + 6) % 7] - n[i] + 12) % 12, hit = SEVENTH[c.type + ':' + sev];
+    const rn = c.chord.replace(/[m°+]$/, '');
+    if (!hit) return { ...c, rn };
+    const [type, rs] = hit, t = CHORD_TYPES[type];
+    return { chord: rn + t.suffix, rn, type, roman: c.roman.replace(/°$/, '') + rs, notes: t.iv.map(x => (n[i] + x) % 12) };
+  });
+}
+
 const PT = { C: 'Dó', D: 'Ré', E: 'Mi', F: 'Fá', G: 'Sol', A: 'Lá', B: 'Si' };
 const ACC_PT = { '#': ' sustenido', '##': ' dobrado sustenido', 'b': ' bemol', 'bb': ' dobrado bemol' };
 export const ptOf = name => PT[name[0]] + (ACC_PT[name.slice(1)] || '');
@@ -189,9 +205,27 @@ export const CHORD_TYPES = {
     desc: 'Acorde com 7 e uma nota bem tensa. Pede muito para resolver no acorde seguinte, comum no choro e no jazz.' },
   '6/9': { label: 'Sexta com nona (6/9)', suffix: '6/9', iv: [0,4,9,2],
     desc: 'Acorde maior com a sexta e a nona. Soa suave e "final", muito usado para terminar músicas na bossa nova e no jazz.' },
+  mmaj7: { label: 'Menor com sétima maior (m(maj7))', suffix: 'm(maj7)', iv: [0,3,7,11],
+    desc: 'Acorde menor com a sétima maior. Soa misterioso, de filme de suspense. Aparece na bossa nova e no tango, muitas vezes entre o menor e o m7.' },
+  madd9: { label: 'Menor com nona adicionada (m(add9))', suffix: 'm(add9)', iv: [0,3,7,2],
+    desc: 'Acorde menor com a nona, sem a sétima. Soa triste mas bonito e aberto, muito usado em baladas e no pop.' },
+  m11: { label: 'Menor com décima primeira (m11)', suffix: 'm11', iv: [0,3,7,10,5], ivNames: ['1','b3','5','b7','11'],
+    desc: 'Menor com sétima e uma quarta por cima. Soa aberto e moderno, comum no jazz, no soul e no funk.' },
+  '9sus4': { label: 'Nona com quarta (9sus4)', suffix: '9sus4', iv: [0,5,7,10,2], ivNames: ['1','4','5','b7','9'],
+    desc: 'Parecido com o 7sus4, com a nona por cima. Soa suspenso e macio, comum no gospel, no soul e no jazz.' },
+  '7b5': { label: 'Sétima com quinta diminuta (7(b5))', suffix: '7(b5)', iv: [0,4,6,10],
+    desc: 'Acorde com 7 e a quinta abaixada. Soa tenso e diferente, aparece no jazz e na bossa nova antes de voltar ao acorde de repouso.' },
+  '7#5': { label: 'Sétima com quinta aumentada (7(#5))', suffix: '7(#5)', iv: [0,4,8,10], ivNames: ['1','3','#5','b7'],
+    desc: 'Acorde com 7 e a quinta subida. Também chamado de 7+. Soa tenso e "puxando" para o próximo acorde, comum no choro e no samba.' },
+  '7b13': { label: 'Sétima com décima terceira menor (7(b13))', suffix: '7(b13)', iv: [0,4,7,10,8], letters: [0,2,4,6,5], ivNames: ['1','3','5','b7','b13'],
+    desc: 'Acorde com 7 e uma nota tensa por cima. Muito usado antes de um acorde menor, no samba, no choro e na bossa nova.' },
+  '7#11': { label: 'Sétima com décima primeira aumentada (7(#11))', suffix: '7(#11)', iv: [0,4,7,10,6], letters: [0,2,4,6,3], ivNames: ['1','3','5','b7','#11'],
+    desc: 'Acorde com 7 e uma nota brilhante por cima. Soa moderno e colorido, comum na bossa nova e no jazz.' },
+  'maj7#11': { label: 'Sétima maior com décima primeira aumentada (maj7(#11))', suffix: 'maj7(#11)', iv: [0,4,7,11,6], letters: [0,2,4,6,3], ivNames: ['1','3','5','7','#11'],
+    desc: 'Sétima maior com uma nota brilhante por cima. Soa sonhador e moderno, muito usado na bossa nova e em trilhas.' },
 };
 // ordem de mostrar: dos mais comuns aos mais raros (o JavaScript põe chaves como '7' antes das outras no objeto)
-export const CHORD_ORDER = ['maior', 'menor', '7', 'm7', 'maj7', '6', 'm6', '9', 'm9', 'maj9', '13', 'add9', '6/9', 'sus2', 'sus4', '7sus4', 'dim', 'dim7', 'aug', 'm7b5', '7b9', '7#9', '5'];
+export const CHORD_ORDER = ['maior', 'menor', '7', 'm7', 'maj7', '6', 'm6', '9', 'm9', 'maj9', '13', 'add9', 'madd9', '6/9', 'mmaj7', 'm11', 'sus2', 'sus4', '7sus4', '9sus4', 'dim', 'dim7', 'aug', 'm7b5', '7b5', '7#5', '7b9', '7#9', '7b13', '7#11', 'maj7#11', '5'];
 const INTERVAL_NAME = { 0: '1', 1: 'b9', 2: '9', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5', 8: '#5', 9: '6', 10: 'b7', 11: '7' };
 export const intervalNames = t => t.ivNames || t.iv.map(i => INTERVAL_NAME[i % 12]);
 
@@ -216,82 +250,103 @@ export const STEP_NAME = { 1: 'semitom', 2: 'tom', 3: 'tom e meio' };
 // cada acorde: [grau da escala (0 = I), alteração em semitons, tipo de acorde, nome do grau]
 export const PROGRESSIONS = {
   maior: [
-    { name: 'I – IV – V', tags: ['pop','bra'], desc: 'A mais básica de todas. Rock, sertanejo, forró, música de roda: com esses três acordes dá para tocar centenas de músicas.',
+    { name: 'I – IV – V', tags: ['pop', 'rock', 'sert', 'forro'], desc: 'A mais básica de todas. Rock, sertanejo, forró, música de roda: com esses três acordes dá para tocar centenas de músicas.',
       chords: [[0, 0, 'maior', 'I'], [3, 0, 'maior', 'IV'], [4, 0, 'maior', 'V']] },
-    { name: 'I – V – vi – IV', tags: ['pop'], desc: 'A progressão do pop. Está em centenas de sucessos de pop, rock, gospel e sertanejo.',
+    { name: 'I – V – vi – IV', tags: ['pop', 'rock', 'louvor', 'sert'], desc: 'A progressão do pop. Está em centenas de sucessos de pop, rock, gospel e sertanejo.',
       chords: [[0, 0, 'maior', 'I'], [4, 0, 'maior', 'V'], [5, 0, 'menor', 'vi'], [3, 0, 'maior', 'IV']] },
-    { name: 'I – vi – IV – V', tags: ['pop','rom'], desc: 'Clássica dos anos 50 e da Jovem Guarda. Soa nostálgica e romântica.',
+    { name: 'I – vi – IV – V', tags: ['pop', 'rom'], desc: 'Clássica dos anos 50 e da Jovem Guarda. Soa nostálgica e romântica.',
       chords: [[0, 0, 'maior', 'I'], [5, 0, 'menor', 'vi'], [3, 0, 'maior', 'IV'], [4, 0, 'maior', 'V']] },
-    { name: 'vi – IV – I – V', tags: ['pop'], desc: 'A mesma do pop, começando pelo acorde menor. Soa mais emotiva.',
+    { name: 'vi – IV – I – V', tags: ['pop', 'louvor'], desc: 'A mesma do pop, começando pelo acorde menor. Soa mais emotiva.',
       chords: [[5, 0, 'menor', 'vi'], [3, 0, 'maior', 'IV'], [0, 0, 'maior', 'I'], [4, 0, 'maior', 'V']] },
-    { name: 'I – IV – I – V7', tags: ['bra'], desc: 'Comum no forró, no sertanejo raiz e nas músicas de festa junina. O V7 prepara a volta para o I.',
+    { name: 'I – IV – I – V7', tags: ['forro', 'sert'], desc: 'Comum no forró, no sertanejo raiz e nas músicas de festa junina. O V7 prepara a volta para o I.',
       chords: [[0, 0, 'maior', 'I'], [3, 0, 'maior', 'IV'], [0, 0, 'maior', 'I'], [4, 0, '7', 'V7']] },
-    { name: 'ii – V – I', tags: ['jazz','bra'], desc: 'A base do jazz e da bossa nova. O V7 cria tensão e o I resolve. Usa acordes com sétima.',
+    { name: 'ii – V – I', tags: ['jazz', 'bossa', 'samba'], desc: 'A base do jazz e da bossa nova. O V7 cria tensão e o I resolve. Usa acordes com sétima.',
       chords: [[1, 0, 'm7', 'ii7'], [4, 0, '7', 'V7'], [0, 0, 'maj7', 'Imaj7']] },
-    { name: 'I – vi – ii – V', tags: ['jazz','bra'], desc: 'A "volta" do samba, da bossa e do jazz, usada para retornar ao começo da música.',
+    { name: 'I – vi – ii – V', tags: ['samba', 'bossa', 'jazz'], desc: 'A "volta" do samba, da bossa e do jazz, usada para retornar ao começo da música.',
       chords: [[0, 0, 'maj7', 'Imaj7'], [5, 0, 'm7', 'vi7'], [1, 0, 'm7', 'ii7'], [4, 0, '7', 'V7']] },
-    { name: 'I – VI7 – ii – V7', tags: ['bra'], desc: 'Clássica do samba e do choro. O VI7 (maior com sétima) "puxa" para o ii.',
+    { name: 'I – VI7 – ii – V7', tags: ['samba'], desc: 'Clássica do samba e do choro. O VI7 (maior com sétima) "puxa" para o ii.',
       chords: [[0, 0, 'maior', 'I'], [5, 0, '7', 'VI7'], [1, 0, 'menor', 'ii'], [4, 0, '7', 'V7']] },
-    { name: 'Blues de 12 compassos', tags: ['jazz'], desc: 'A base do blues e do rock antigo. São 12 compassos, um acorde por compasso, todos com sétima.',
+    { name: 'Blues de 12 compassos', tags: ['blues', 'rock'], desc: 'A base do blues e do rock antigo. São 12 compassos, um acorde por compasso, todos com sétima.',
       chords: [[0, 0, '7', 'I7'], [0, 0, '7', 'I7'], [0, 0, '7', 'I7'], [0, 0, '7', 'I7'], [3, 0, '7', 'IV7'], [3, 0, '7', 'IV7'],
         [0, 0, '7', 'I7'], [0, 0, '7', 'I7'], [4, 0, '7', 'V7'], [3, 0, '7', 'IV7'], [0, 0, '7', 'I7'], [4, 0, '7', 'V7']] },
-    { name: 'I – IV – vi – V', tags: ['pop'], desc: 'Variação do pop, muito usada em louvor e baladas.',
+    { name: 'I – IV – V7 – I', tags: ['sert', 'forro'], desc: 'A volta completa: sai do I, passa pelo IV e pelo V7 e volta para casa. Base de moda de viola, xote e música caipira.',
+      chords: [[0, 0, 'maior', 'I'], [3, 0, 'maior', 'IV'], [4, 0, '7', 'V7'], [0, 0, 'maior', 'I']] },
+    { name: 'I – bVI – bVII – I', tags: ['rock'], desc: 'Som épico do rock e do metal. Os dois acordes do meio vêm "emprestados" do tom menor.',
+      chords: [[0, 0, 'maior', 'I'], [5, -1, 'maior', 'bVI'], [6, -1, 'maior', 'bVII'], [0, 0, 'maior', 'I']] },
+    { name: 'ii7 – V7(b9) – Imaj7', tags: ['bossa', 'jazz', 'samba'], desc: 'O ii–V–I com tempero de bossa: o V7(b9) deixa a volta para o I mais tensa e bonita.',
+      chords: [[1, 0, 'm7', 'ii7'], [4, 0, '7b9', 'V7(b9)'], [0, 0, 'maj7', 'Imaj7']] },
+    { name: 'I – IV – vi – V', tags: ['louvor', 'pop'], desc: 'Variação do pop, muito usada em louvor e baladas.',
       chords: [[0, 0, 'maior', 'I'], [3, 0, 'maior', 'IV'], [5, 0, 'menor', 'vi'], [4, 0, 'maior', 'V']] },
-    { name: 'IV – I – V – vi', tags: ['pop'], desc: 'Começa no IV e soa aberta, de "subida". Comum no louvor e no pop.',
+    { name: 'IV – I – V – vi', tags: ['louvor', 'pop'], desc: 'Começa no IV e soa aberta, de "subida". Comum no louvor e no pop.',
       chords: [[3, 0, 'maior', 'IV'], [0, 0, 'maior', 'I'], [4, 0, 'maior', 'V'], [5, 0, 'menor', 'vi']] },
-    { name: 'I – V – IV', tags: ['pop'], desc: 'Rock direto, de três acordes. Soa forte e animada.',
+    { name: 'I – V – IV', tags: ['rock'], desc: 'Rock direto, de três acordes. Soa forte e animada.',
       chords: [[0, 0, 'maior', 'I'], [4, 0, 'maior', 'V'], [3, 0, 'maior', 'IV']] },
-    { name: 'I – bVII – IV', tags: ['pop'], desc: 'Som do rock clássico. O bVII é um acorde maior um tom abaixo do I.',
+    { name: 'I – bVII – IV', tags: ['rock'], desc: 'Som do rock clássico. O bVII é um acorde maior um tom abaixo do I.',
       chords: [[0, 0, 'maior', 'I'], [6, -1, 'maior', 'bVII'], [3, 0, 'maior', 'IV']] },
-    { name: 'I – iii – IV – V', tags: ['pop', 'rom'], desc: 'Romântica e suave, comum em baladas e na Jovem Guarda.',
+    { name: 'I – iii – IV – V', tags: ['rom', 'pop'], desc: 'Romântica e suave, comum em baladas e na Jovem Guarda.',
       chords: [[0, 0, 'maior', 'I'], [2, 0, 'menor', 'iii'], [3, 0, 'maior', 'IV'], [4, 0, 'maior', 'V']] },
-    { name: 'Cânone de Pachelbel', tags: ['pop', 'rom'], desc: 'Oito acordes de uma música clássica famosa, tocada em casamentos e copiada por muitas músicas pop.',
+    { name: 'Cânone de Pachelbel', tags: ['pop', 'rom', 'louvor'], desc: 'Oito acordes de uma música clássica famosa, tocada em casamentos e copiada por muitas músicas pop.',
       chords: [[0, 0, 'maior', 'I'], [4, 0, 'maior', 'V'], [5, 0, 'menor', 'vi'], [2, 0, 'menor', 'iii'], [3, 0, 'maior', 'IV'], [0, 0, 'maior', 'I'], [3, 0, 'maior', 'IV'], [4, 0, 'maior', 'V']] },
-    { name: 'I – IV – iv – I', tags: ['rom', 'bra'], desc: 'O IV vira menor antes de voltar ao I. Dá um toque saudoso, muito usado em seresta e MPB.',
+    { name: 'I – IV – iv – I', tags: ['rom'], desc: 'O IV vira menor antes de voltar ao I. Dá um toque saudoso, muito usado em seresta e MPB.',
       chords: [[0, 0, 'maior', 'I'], [3, 0, 'maior', 'IV'], [3, 0, 'menor', 'iv'], [0, 0, 'maior', 'I']] },
-    { name: 'I – I7 – IV – iv', tags: ['rom', 'bra'], desc: 'O I7 empurra para o IV, e o iv menor dá a saudade. Clássica de seresta e samba-canção.',
+    { name: 'I – I7 – IV – iv', tags: ['rom', 'samba'], desc: 'O I7 empurra para o IV, e o iv menor dá a saudade. Clássica de seresta e samba-canção.',
       chords: [[0, 0, 'maior', 'I'], [0, 0, '7', 'I7'], [3, 0, 'maior', 'IV'], [3, 0, 'menor', 'iv']] },
-    { name: 'I – #I°7 – ii – V7', tags: ['bra', 'jazz'], desc: 'Do choro e do samba. O diminuto (#I°7) é uma ponte entre o I e o ii.',
+    { name: 'I – #I°7 – ii – V7', tags: ['samba'], desc: 'Do choro e do samba. O diminuto (#I°7) é uma ponte entre o I e o ii.',
       chords: [[0, 0, 'maior', 'I'], [0, 1, 'dim7', '#I°7'], [1, 0, 'menor', 'ii'], [4, 0, '7', 'V7']] },
-    { name: 'Imaj7 – IVmaj7', tags: ['bra', 'jazz'], desc: 'Dois acordes com sétima maior, indo e voltando. Som calmo de bossa nova.',
+    { name: 'Imaj7 – IVmaj7', tags: ['bossa'], desc: 'Dois acordes com sétima maior, indo e voltando. Som calmo de bossa nova.',
       chords: [[0, 0, 'maj7', 'Imaj7'], [3, 0, 'maj7', 'IVmaj7']] },
-    { name: 'iii – vi – ii – V – I', tags: ['jazz', 'bra'], desc: 'Ciclo de quintas: cada acorde puxa o seguinte até chegar no I. Muito usado no jazz, no samba e no choro.',
+    { name: 'iii – vi – ii – V – I', tags: ['jazz', 'samba', 'bossa'], desc: 'Ciclo de quintas: cada acorde puxa o seguinte até chegar no I. Muito usado no jazz, no samba e no choro.',
       chords: [[2, 0, 'm7', 'iii7'], [5, 0, 'm7', 'vi7'], [1, 0, 'm7', 'ii7'], [4, 0, '7', 'V7'], [0, 0, 'maj7', 'Imaj7']] },
-    { name: 'I – V7 (baião)', tags: ['bra'], desc: 'Só dois acordes, para começar. Baião, forró, marchinha e cantiga de roda.',
+    { name: 'I – V7 (baião)', tags: ['forro', 'sert'], desc: 'Só dois acordes, para começar. Baião, forró, marchinha e cantiga de roda.',
       chords: [[0, 0, 'maior', 'I'], [4, 0, '7', 'V7']] },
-    { name: 'Blues de 8 compassos', tags: ['jazz'], desc: 'Blues mais curto, de 8 compassos. Bom para começar a tocar blues.',
+    { name: 'Blues de 8 compassos', tags: ['blues'], desc: 'Blues mais curto, de 8 compassos. Bom para começar a tocar blues.',
       chords: [[0, 0, '7', 'I7'], [4, 0, '7', 'V7'], [3, 0, '7', 'IV7'], [3, 0, '7', 'IV7'], [0, 0, '7', 'I7'], [4, 0, '7', 'V7'], [0, 0, '7', 'I7'], [4, 0, '7', 'V7']] },
   ],
   menor: [
-    { name: 'i – iv – v', tags: ['pop','rom'], desc: 'A básica do tom menor. Soa triste e simples.',
+    { name: 'i – iv – v', tags: ['pop', 'rom'], desc: 'A básica do tom menor. Soa triste e simples.',
       chords: [[0, 0, 'menor', 'i'], [3, 0, 'menor', 'iv'], [4, 0, 'menor', 'v']] },
-    { name: 'i – iv – V7', tags: ['bra','rom'], desc: 'Com o V maior com sétima, a volta para o i fica mais forte. Comum no tango, no bolero, na MPB e no flamenco.',
+    { name: 'i – iv – V7', tags: ['latina', 'rom'], desc: 'Com o V maior com sétima, a volta para o i fica mais forte. Comum no tango, no bolero, na MPB e no flamenco.',
       chords: [[0, 0, 'menor', 'i'], [3, 0, 'menor', 'iv'], [4, 0, '7', 'V7']] },
-    { name: 'i – VI – III – VII', tags: ['pop'], desc: 'Muito usada no rock e no pop em tom menor.',
+    { name: 'i – VI – III – VII', tags: ['pop', 'rock'], desc: 'Muito usada no rock e no pop em tom menor.',
       chords: [[0, 0, 'menor', 'i'], [5, 0, 'maior', 'VI'], [2, 0, 'maior', 'III'], [6, 0, 'maior', 'VII']] },
-    { name: 'i – VII – VI – V', tags: ['pop'], desc: 'Cadência andaluza: o som espanhol do flamenco.',
+    { name: 'i – VII – VI – V', tags: ['latina', 'rock'], desc: 'Cadência andaluza: o som espanhol do flamenco.',
       chords: [[0, 0, 'menor', 'i'], [6, 0, 'maior', 'VII'], [5, 0, 'maior', 'VI'], [4, 0, 'maior', 'V']] },
-    { name: 'i – VI – VII', tags: ['pop'], desc: 'Soa épica. Comum no rock e em trilhas sonoras.',
+    { name: 'i – VI – VII', tags: ['rock', 'pop'], desc: 'Soa épica. Comum no rock e em trilhas sonoras.',
       chords: [[0, 0, 'menor', 'i'], [5, 0, 'maior', 'VI'], [6, 0, 'maior', 'VII']] },
-    { name: 'iiø – V7 – i', tags: ['jazz','bra'], desc: 'O ii–V–i do tom menor, do jazz e da bossa. O primeiro acorde é o meio-diminuto.',
+    { name: 'iiø – V7 – i', tags: ['jazz', 'bossa'], desc: 'O ii–V–i do tom menor, do jazz e da bossa. O primeiro acorde é o meio-diminuto.',
       chords: [[1, 0, 'm7b5', 'iiø'], [4, 0, '7', 'V7'], [0, 0, 'm7', 'i7']] },
-    { name: 'i – iv – VII – III', tags: ['pop', 'rom'], desc: 'Ciclo de quintas no tom menor. Soa triste e elegante, comum em boleros e baladas.',
+    { name: 'i – iv – VII – III', tags: ['rom', 'latina'], desc: 'Ciclo de quintas no tom menor. Soa triste e elegante, comum em boleros e baladas.',
       chords: [[0, 0, 'menor', 'i'], [3, 0, 'menor', 'iv'], [6, 0, 'maior', 'VII'], [2, 0, 'maior', 'III']] },
-    { name: 'i – VII – VI – VII', tags: ['pop'], desc: 'Rock em tom menor, com cara de aventura.',
+    { name: 'i – VII – VI – VII', tags: ['rock'], desc: 'Rock em tom menor, com cara de aventura.',
       chords: [[0, 0, 'menor', 'i'], [6, 0, 'maior', 'VII'], [5, 0, 'maior', 'VI'], [6, 0, 'maior', 'VII']] },
-    { name: 'i – VI – iv – V7', tags: ['rom', 'bra'], desc: 'Dramática, de bolero e tango. O V7 traz de volta para o i.',
+    { name: 'i – VI – iv – V7', tags: ['latina', 'rom'], desc: 'Dramática, de bolero e tango. O V7 traz de volta para o i.',
       chords: [[0, 0, 'menor', 'i'], [5, 0, 'maior', 'VI'], [3, 0, 'menor', 'iv'], [4, 0, '7', 'V7']] },
-    { name: 'i – iv – i – V7', tags: ['bra', 'rom'], desc: 'Simples e triste. Comum em valsa, toada e música nordestina.',
+    { name: 'i – iv – i – V7', tags: ['forro', 'sert', 'rom'], desc: 'Simples e triste. Comum em valsa, toada e música nordestina.',
       chords: [[0, 0, 'menor', 'i'], [3, 0, 'menor', 'iv'], [0, 0, 'menor', 'i'], [4, 0, '7', 'V7']] },
     { name: 'i – v – VI – III', tags: ['pop'], desc: 'Suave e melancólica, usada no pop e em trilhas.',
       chords: [[0, 0, 'menor', 'i'], [4, 0, 'menor', 'v'], [5, 0, 'maior', 'VI'], [2, 0, 'maior', 'III']] },
-    { name: 'Blues menor', tags: ['jazz'], desc: 'O blues de 12 compassos em tom menor. Soa mais escuro e triste.',
+    { name: 'Blues menor', tags: ['blues'], desc: 'O blues de 12 compassos em tom menor. Soa mais escuro e triste.',
       chords: [[0, 0, 'm7', 'i7'], [0, 0, 'm7', 'i7'], [0, 0, 'm7', 'i7'], [0, 0, 'm7', 'i7'], [3, 0, 'm7', 'iv7'], [3, 0, 'm7', 'iv7'],
         [0, 0, 'm7', 'i7'], [0, 0, 'm7', 'i7'], [5, 0, '7', 'VI7'], [4, 0, '7', 'V7'], [0, 0, 'm7', 'i7'], [4, 0, '7', 'V7']] },
+    { name: 'i – bII – i (flamenco)', tags: ['latina'], desc: 'O acorde maior meio tom acima dá o som espanhol do flamenco e da música cigana.',
+      chords: [[0, 0, 'menor', 'i'], [1, -1, 'maior', 'bII'], [0, 0, 'menor', 'i']] },
+    { name: 'i – V7 (tango)', tags: ['latina', 'rom'], desc: 'Só dois acordes, indo e voltando. Base de tango, valsa e bolero em tom menor.',
+      chords: [[0, 0, 'menor', 'i'], [4, 0, '7', 'V7'], [0, 0, 'menor', 'i'], [4, 0, '7', 'V7']] },
   ],
 };
 
-export const PROG_STYLES = [['', 'Todas'], ['pop', 'Pop, rock e louvor'], ['bra', 'Brasileira'], ['rom', 'Romântica'], ['jazz', 'Jazz e blues']];
+// título padrão de uma progressão pronta: os graus em romano, como estão nos acordes (ii7 – V7 – Imaj7)
+export const progRoman = pr => pr.chords.map(c => c[3]).join(pr.chords.length > 6 ? ' · ' : ' – ');
+// apelido, quando o nome não é só graus: "Blues de 12 compassos", "Cânone de Pachelbel", "baião"…
+const ROMAN_TOKEN = /^[b#]?(i|ii|iii|iv|v|vi|vii)(°|ø|maj|m|\d|\(|\)|#|b)*\d*(\(.*\))?$/i;
+export function progNick(pr) {
+  const par = pr.name.match(/\(([^)]*[a-zà-ú]{3,}[^)]*)\)/i);
+  if (par && !/^(b9|#9|maj7|b5|#5|b13|#11|add9)$/.test(par[1])) return par[1][0].toUpperCase() + par[1].slice(1);
+  return pr.name.split(/[\s–]+/).filter(Boolean).every(t => ROMAN_TOKEN.test(t)) ? '' : pr.name;
+}
+
+export const PROG_STYLES = [['', 'Todas'], ['pop', 'Pop'], ['rock', 'Rock'], ['louvor', 'Louvor'], ['sert', 'Sertanejo'], ['forro', 'Forró e baião'],
+  ['samba', 'Samba e choro'], ['bossa', 'Bossa nova'], ['rom', 'Romântica e seresta'], ['latina', 'Tango, bolero e flamenco'], ['jazz', 'Jazz'], ['blues', 'Blues']];
 
 // monta os acordes de uma progressão num tom
 export function progressionChords(key, mode, prog, useSharps) {
@@ -312,8 +367,8 @@ const DEG_OF = {
   maior: [[0, 0], [1, -1], [1, 0], [2, -1], [2, 0], [3, 0], [3, 1], [4, 0], [5, -1], [5, 0], [6, -1], [6, 0]],
   menor: [[0, 0], [1, -1], [1, 0], [2, 0], [2, 1], [3, 0], [3, 1], [4, 0], [5, 0], [5, 1], [6, 0], [6, 1]],
 };
-const LOWER = new Set(['menor', 'm7', 'dim', 'm7b5', 'm6', 'm9', 'dim7']);
-const ROMAN_SUF = { menor: '', m7: '7', m7b5: 'ø', dim: '°', dim7: '°7', m6: '6', m9: '9', maior: '', '5': '5' };
+const LOWER = new Set(['menor', 'm7', 'dim', 'm7b5', 'm6', 'm9', 'dim7', 'mmaj7', 'madd9', 'm11']);
+const ROMAN_SUF = { menor: '', m7: '7', m7b5: 'ø', dim: '°', dim7: '°7', m6: '6', m9: '9', mmaj7: '(maj7)', madd9: '(add9)', m11: '11', maior: '', '5': '5' };
 // converte acordes de uma progressão pronta em itens editáveis (distância até o tom + tipo)
 // se o grau escrito for diferente do comum (ex.: #I°7 em vez de bII), guarda o grau em "d"
 export const itemsFromChords = (key, chords, mode = 'maior') => chords.map(c => {
@@ -332,7 +387,21 @@ export function customChords(key, mode, items, useSharps) {
     const pcs = t.iv.map(i => (rootPc + i) % 12);
     const num = LOWER.has(type) ? ROMAN[deg].toLowerCase() : ROMAN[deg];
     const roman = (alt < 0 ? 'b' : alt > 0 ? '#' : '') + num + (type in ROMAN_SUF ? ROMAN_SUF[type] : t.suffix);
-    return { roman, type, rootPc, rootName, name: rootName + t.suffix, o,
+    return { roman, type, rootPc, rootName, name: rootName + t.suffix, o, da: [deg, alt],
       names: spellChordFromRoot(rootName, t.iv, t.letters), pcs, inField: pcs.every(p => inKey.has(p)) };
+  });
+}
+
+// "com tensão": troca cada acorde por uma versão mais rica, como no jazz e na bossa
+// o V (5º grau, 7 semitons acima do tom) é dominante: vira 9; os outros maiores viram maj7
+const TENSION = { menor: 'm7', '7': '9', m7: 'm9', maj7: 'maj9', dim: 'm7b5', sus4: '7sus4', '6': '6/9' };
+export function tensionType(type, o) {
+  if (type === 'maior' || type === '5') return o === 7 ? '9' : 'maj7';
+  return TENSION[type] || type;
+}
+export function tensionChords(key, mode, chords, useSharps) {
+  return chords.map(c => {
+    const o = (c.rootPc - key + 12) % 12, t = tensionType(c.type, o);
+    return t === c.type ? c : { ...customChords(key, mode, [{ o, t, d: c.da }], useSharps)[0], inField: c.inField }; // "de fora do campo" segue o acorde original
   });
 }

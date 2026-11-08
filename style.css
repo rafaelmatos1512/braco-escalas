@@ -142,7 +142,7 @@ ol.str{padding-left:1.2rem;margin:6px 0}
 @media (min-width:900px){
   #fieldCards,#scaleCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:0 14px}
   .layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:18px;align-items:start}
-  aside{position:sticky;top:calc(var(--head-h) + 12px);max-height:calc(100vh - var(--head-h) - 24px);overflow:auto}
+  aside{position:sticky;top:calc(var(--head-h) + 12px);align-self:start}
   aside .controls{flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 2px 10px var(--shadow)}
   aside .controls label{min-width:0;width:100%}
   aside .seg button{background:var(--inner)}
@@ -375,3 +375,64 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 .pfilt{margin:0 0 10px;padding:6px 12px}
 .pfilt summary{cursor:pointer;font-weight:700;color:var(--acc)}
 .pfilt .preg{margin:8px 0 0}
+.pcard span em{font-style:normal;color:var(--acc);font-weight:700}
+/* menus de uma coluna com nomes longos (tipo de acorde): o texto quebra linha em vez de vazar */
+.dd-menu:not([style*="--cols: 3"]) button{white-space:normal;line-height:1.25}
+/* cartões de progressão: todos do mesmo tamanho, uma linha de graus e uma de acordes */
+.plist .pcard{min-height:0;overflow:hidden}
+.plist .pcard b,.plist .pcard span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmore{border:0;box-shadow:none;background:none;padding:0;margin:0}
+.cmore summary{cursor:pointer;font-weight:700;color:var(--acc);padding:4px 0}
+.cmore[open] summary{margin-bottom:6px}
+.cmore label{display:block;margin-bottom:10px}
+#tab-acordes aside{position:static}
+
+/* ===== padrão único de tamanho de botões (auditoria) ===== */
+/* botões de escolha: mesma altura, uma linha só, acompanham o A-/A+ */
+.roots button,.seg button,.eact button{min-height:2.6rem;white-space:nowrap;line-height:1.2}
+.seg button{font-size:1rem;border-radius:10px;padding:6px 12px}
+.dd-btn{height:auto;min-height:2.6rem}
+/* o selecionado não engorda o texto (os vizinhos não pulam) */
+.roots button.on,.seg button.on{font-weight:inherit;box-shadow:inset 0 0 0 1px var(--acc)}
+/* rótulo das linhas centrado, mas os botões todos da mesma altura */
+.preg,#pPosTools{align-items:stretch}
+.preg>b,#pPosTools>b{align-self:center}
+/* montagem: botões de acorde iguais, nome e tipo numa linha cada */
+.etypes button,.efield button{min-height:2.9rem;padding:5px 8px;line-height:1.2;text-align:center;min-width:calc(64px * var(--fs))}
+.etypes b,.efield b,.etypes small,.efield small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* sequência da progressão: nome do acorde numa linha, desenhos alinhados */
+.pseq{grid-template-columns:repeat(auto-fill,minmax(calc(112px * var(--fs)),1fr))}
+.pc b,.pc small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc b{overflow-wrap:normal}
+/* botões de ação e links com altura de toque igual */
+.play,.go-tab{min-height:2.6rem;white-space:nowrap}
+.link{min-height:2.4rem;display:inline-flex;align-items:center}
+.elive .link{min-height:0}
+.eact button{flex:1 1 auto;min-width:5.5rem}
+/* afinador */
+.tn-strings{grid-template-columns:repeat(auto-fill,minmax(calc(118px * var(--fs)),1fr))}
+.tn-strings button{white-space:nowrap;min-height:2.6rem}
+/* cartões de progressão e de forma */
+.plist{grid-template-columns:repeat(auto-fill,minmax(min(100%,calc(260px * var(--fs))),1fr))}
+.plist .pcard{min-height:3.4rem}
+.plist>.hint{grid-column:1/-1}
+.vc small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* Campos com tensão: nomes longos ficam 4 por linha e nunca passam por cima do vizinho */
+.cell b,.cell small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#fieldCards.ten .row{display:grid;grid-template-columns:repeat(4,1fr);row-gap:8px}
+@supports (font-size:1cqi){ #fieldCards.ten .cell b{font-size:min(1.2em,6.5cqi)} }
+/* Campos: cartões das escalas lado a lado, compactos, como as listas de Progressões */
+#fieldCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,calc(340px * var(--fs))),1fr));gap:10px;align-content:start}
+#fieldCards .scard{margin:0;padding:8px 10px}
+#fieldCards .scard .name{margin-bottom:4px;font-size:.95rem}
+#fieldCards .cell{padding:4px 1px}
+@supports (font-size:1cqi){ #fieldCards .cell b{font-size:min(1.1em,5.6cqi)} #fieldCards .cell small{font-size:min(.9em,4.6cqi)} }
+/* Campos: sem quadro ao lado; o campo escolhido abre embaixo do cartão, na largura toda */
+#tab-campos .clayout{display:block}
+#fieldCards .frow{grid-column:1/-1;margin:0}
+#fieldCards .frow h3{margin:12px 0 4px}
+#fieldCards .frow .shapes{grid-template-columns:repeat(auto-fill,minmax(calc(130px * var(--fs)),1fr))}
+#fieldCards .fboard{margin-top:6px;overflow-x:auto}
+#fboard svg{width:100%;min-width:720px;display:block}
+/* o campo aberto fica no meio da página: nunca preso na tela (era isso que fazia a tela subir) */
+#fieldCards .fpanel.frow{position:relative;top:auto;left:auto;right:auto;bottom:auto;z-index:auto;max-height:none;overflow:visible;padding:12px 14px}

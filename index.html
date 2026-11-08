@@ -64,8 +64,9 @@
   <section id="tab-campos" hidden>
     <div class="box">
       <p><b>O que é o campo harmônico?</b> São os acordes que combinam entre si dentro de uma escala. Cada nota da escala "vira" um acorde. Os números romanos mostram a posição: maiúsculo (I, IV, V) é acorde maior, minúsculo (ii, iii, vi) é menor. Os mais usados costumam ser o I, o IV e o V.</p>
-      <p class="only-small">Toque num acorde para ouvir e ver como tocar.</p>
+      <p>Toque num acorde para ouvir e ver o campo inteiro com os desenhos.</p>
     </div>
+    <div id="fOpts" class="box"></div>
     <div class="clayout">
       <div id="fieldCards"></div>
       <aside id="fpanel" class="fpanel empty" aria-live="polite"></aside>
@@ -112,9 +113,9 @@
     <div class="layout">
       <aside><div class="controls">
         <label>Tipo <select id="gkind"><option value="pow">Power chord (5)</option><option value="tri">Tríades (3 cordas)</option><option value="ext">Acordes com tensão</option></select><small class="hint">Power chord: só 2 notas, o som forte do rock. Tríades: acorde em 3 cordas, som leve. Com tensão: acordes de 4 ou 5 notas (7, 9…).</small></label>
-        <label id="gtriL">Tríade <select id="gtri"><option value="maior">Maior</option><option value="menor">Menor</option><option value="dim">Diminuta</option><option value="aug">Aumentada</option></select><small class="hint">Maior (alegre), menor (triste), diminuta (tensa) ou aumentada (som "suspenso").</small></label>
+        <label id="gtriL">Tríade <select id="gtri"><option value="maior">Maior</option><option value="menor">Menor</option><option value="dim">Diminuta</option><option value="aug">Aumentada</option><option value="sus2">Suspensa 2 (sus2)</option><option value="sus4">Suspensa 4 (sus4)</option></select><small class="hint">Maior (alegre), menor (triste), diminuta (tensa), aumentada (som "flutuante") ou suspensa (nem alegre nem triste).</small></label>
         <label id="gsetL">Cordas <select id="gset"><option value="5,4,3">1ª-2ª-3ª (agudas)</option><option value="4,3,2">2ª-3ª-4ª</option><option value="3,2,1">3ª-4ª-5ª</option><option value="2,1,0">4ª-5ª-6ª (graves)</option></select><small class="hint">Em quais 3 cordas tocar a tríade. As agudas são as mais finas.</small></label>
-        <label id="gextL">Acorde <select id="gext"><option value="7">7</option><option value="m7">m7</option><option value="maj7">maj7</option><option value="9">9</option><option value="7#9">7(#9) Hendrix</option><option value="add9">add9</option><option value="sus4">sus4</option><option value="6/9">6/9</option><option value="m7b5">m7(b5)</option></select><small class="hint">Qual acorde mostrar. O que cada um significa aparece no quadro com o nome do acorde.</small></label>
+        <label id="gextL">Acorde <select id="gext"></select><small class="hint">Qual acorde mostrar. O que cada um significa aparece no quadro com o nome do acorde.</small></label>
         <label>No braço mostrar <select id="glabels"><option value="notes">Notas</option><option value="iv">Intervalos</option></select><small class="hint">"Notas" mostra o nome (C, E, G). "Intervalos" mostra o papel de cada nota: 1 é a base, 3 a terça, 5 a quinta, b7 a sétima.</small></label>
       </div></aside>
       <div class="results">
@@ -124,6 +125,7 @@
         <div id="gInfo" class="box"></div>
         <div class="legend-box" data-chord-legend></div>
         <div id="gPositions" class="grid"></div>
+        <div id="gMore" class="morebtns"></div>
         <div id="gSel" class="box"></div>
         <div class="board-wrap"><div id="board4"></div></div>
         <p class="legend"><i class="d o"></i> nota principal do acorde <i class="d b"></i> outras notas do acorde · toque numa bolinha para ouvir</p>
@@ -202,8 +204,9 @@
       <ol>
         <li>Escolha a <b>Nota</b> no alto, como em Escalas.</li>
         <li>Cada cartão mostra os 7 acordes de uma escala, com o número (I, ii, iii…) embaixo.</li>
-        <li><b>Toque num acorde</b>: ele toca e abre um quadro com as notas e os desenhos para tocar. No computador o quadro fica à <b>direita</b>; no celular ele sobe de <b>baixo</b>. O <b>X</b> fecha.</li>
+        <li><b>Toque num acorde</b>: ele toca e o campo abre embaixo de todas as escalas, com as notas, as formas para tocar e os <b>7 acordes lado a lado</b>, cada um com o desenho. Toque em outro acorde da fila para trocar. O <b>X</b> fecha.</li>
         <li>No quadro, <b>Ver todas as formas</b> leva para a tela Acordes com aquele acorde.</li>
+        <li><b>Desenho</b> e <b>Tocar tudo em</b> (no alto): como em Progressões. <b>Com tensão</b> mostra o campo com sétima (Cmaj7, Dm7, G7…); <b>Power chord</b> e <b>Tríade</b> trocam os desenhos; <b>Tocar tudo em</b> escolhe a parte do braço.</li>
       </ol>
       <p><button type="button" class="go-tab" data-go="campos">Abrir a tela Campos →</button></p></details>
 
@@ -232,10 +235,9 @@
         <li>Toque no <b>tom da música</b> (os 12 botões) e escolha <b>Maior</b> ou <b>Menor</b>.</li>
         <li>Toque numa <b>progressão</b> da lista (por exemplo I – IV – V).</li>
         <li>Aparecem os acordes da sequência. <b>Toque num acorde</b> para ouvir e ver onde ele fica no braço.</li>
-        <li><b>Tocar a progressão</b>: toca a sequência inteira, acendendo cada acorde. <b>Parar</b> interrompe.</li>
         <li><b>Trocar a forma</b>: abaixo do braço, toque num desenho para usá-lo naquele acorde. <b>Parte do braço</b> filtra os desenhos, e <b>Ver mais</b>, à direita dessa linha, mostra outros.</li>
         <li><b>Mais filtros</b> (abaixo de Parte do braço): escolha com ou sem cordas soltas, com ou sem pestana, e quantas cordas soam.</li>
-        <li><b>Desenho</b>: <b>Normal</b> mostra os acordes de sempre; <b>Power chord</b> mostra o jeito do rock (2 ou 3 cordas); <b>Tríade</b> mostra o acorde em só 3 cordas, como na tela Guitarra.</li>
+        <li><b>Desenho</b>: <b>Normal</b> mostra os acordes de sempre; <b>Com tensão</b> troca cada acorde por um mais rico, com 7ª ou 9ª (som de jazz e bossa); <b>Power chord</b> mostra o jeito do rock (2 ou 3 cordas); <b>Tríade</b> mostra o acorde em só 3 cordas, como na tela Guitarra.</li>
         <li><b>Tocar tudo em</b>: muda todos os acordes da progressão de uma vez para o início, o meio ou a parte aguda do braço. <b>Normal</b> volta às formas de sempre.</li>
       </ol>
       <p>Os acordes aparecem <b>em ordem, um ao lado do outro</b>, cada um com o desenho de como tocar.</p>
@@ -245,13 +247,13 @@
       <p>Além das progressões prontas, você pode montar a sua, com qualquer acorde e quantos quiser.</p>
       <ol>
         <li>Na tela <b>Progressões</b>, escolha o <b>tom</b> e o <b>modo</b> (maior ou menor).</li>
-        <li>No alto da tela, à direita, toque em <b>+ Criar progressão</b>. Para achar uma pronta, use a <b>busca</b> ou os botões de <b>estilo</b>. Para achar uma pronta, use a <b>busca</b> ou os botões de <b>estilo</b> (Brasileira, Romântica…).</li>
+        <li>No alto da tela, à direita, toque em <b>+ Criar progressão</b>. Para achar uma pronta, use a <b>busca</b> ou os botões de <b>estilo</b> (Samba e choro, Sertanejo, Louvor…). Os estilos mudam conforme o modo: Tango e flamenco só aparecem em Menor.</li>
         <li>Dê um <b>nome</b> (por exemplo "Música da festa"). Se deixar em branco, o aplicativo dá um nome.</li>
         <li><b>Jeito rápido</b>: toque num acorde do campo harmônico (os que combinam com o tom). Ele entra no fim da sequência.</li>
         <li><b>Qualquer acorde</b>: toque na nota e depois no tipo (maior, menor, 7, m7, maj7, diminuto…). Ele também entra no fim.</li>
         <li>Para <b>mudar a ordem</b> ou <b>tirar</b> um acorde, toque nele na sequência e use <b>← Mover</b>, <b>Mover →</b>, <b>Repetir</b> ou <b>Tirar</b>.</li>
         <li>Quer o acorde em outra parte do braço? Toque nele na sequência e, em <b>Trocar a forma</b>, toque no desenho que preferir. Isso vale também nas progressões prontas.</li>
-        <li>Toque em <b>Tocar a progressão</b> para ouvir como ficou.</li>
+        <li>Toque em cada acorde da sequência para ouvir como ficou.</li>
         <li>Toque em <b>Guardar a progressão</b>. Ela aparece no botão <b>As minhas</b>, no alto da lista, para abrir quando quiser.</li>
       </ol>
       <p>Acordes com <b>borda tracejada</b> são de fora do campo harmônico do tom. Pode usar à vontade, eles só dão uma cor diferente à música.</p>

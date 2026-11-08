@@ -57,3 +57,12 @@ test('personalizar mantém C#°7 do choro (não vira Db°7) e o tom menor não q
   assert.equal(customChords(0, 'maior', items, true)[1].name, 'C#°7');
   assert.equal(customChords(0, 'menor', items, true)[1].rootPc, 1);
 });
+
+test('com tensão mantém o grau escrito e o "dentro do campo" do acorde original', async () => {
+  const { customChords, tensionChords } = await import('../music.js');
+  const mine = customChords(0, 'maior', [{ o: 6, t: 'maior', d: [4, -1] }, { o: 4, t: 'm7' }], true);
+  const ten = tensionChords(0, 'maior', mine, true);
+  assert.equal(ten[0].name, 'Gbmaj7');
+  assert.equal(ten[1].name, 'Em9');
+  assert.equal(ten[1].inField, true);
+});

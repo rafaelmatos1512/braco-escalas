@@ -82,3 +82,32 @@ test('botão Sustenidos: tônica em tecla preta segue o botão, sem ## nem bb', 
   assert.equal(harmonicField(1, 'Maior', true)[0].chord, 'C#');
   for (let r = 0; r < 12; r++) for (const s of [true, false]) assert.ok(!spelledScale(r, 'Maior', s).some(n => /##|bb/.test(n)), r + ' ' + s);
 });
+
+test('com tensão: I–V–vi–IV em C vira Cmaj7–G9–Am7–Fmaj7 e ii–V–I ganha nonas', async () => {
+  const { PROGRESSIONS, progressionChords, tensionChords } = await import('../music.js');
+  const pop = PROGRESSIONS.maior.find(x => x.name === 'I – V – vi – IV');
+  assert.deepEqual(tensionChords(0, 'maior', progressionChords(0, 'maior', pop, true), true).map(c => c.name), ['Cmaj7', 'G9', 'Am7', 'Fmaj7']);
+  const iiVI = PROGRESSIONS.maior.find(x => x.name === 'ii – V – I');
+  assert.deepEqual(tensionChords(0, 'maior', progressionChords(0, 'maior', iiVI, true), true).map(c => c.name), ['Dm9', 'G9', 'Cmaj9']);
+  const choro = PROGRESSIONS.maior.find(x => x.name.includes('#I°7'));
+  assert.equal(tensionChords(0, 'maior', progressionChords(0, 'maior', choro, true), true)[1].name, 'C#°7');
+});
+
+test('títulos das progressões prontas em romano, com apelido só quando tem nome próprio', async () => {
+  const { PROGRESSIONS, progRoman, progNick } = await import('../music.js');
+  const f = n => PROGRESSIONS.maior.find(x => x.name === n) || PROGRESSIONS.menor.find(x => x.name === n);
+  assert.equal(progRoman(f('ii – V – I')), 'ii7 – V7 – Imaj7');
+  assert.equal(progNick(f('ii – V – I')), '');
+  assert.equal(progNick(f('ii7 – V7(b9) – Imaj7')), '');
+  assert.equal(progNick(f('I – V7 (baião)')), 'Baião');
+  assert.equal(progNick(f('Cânone de Pachelbel')), 'Cânone de Pachelbel');
+  for (const pr of [...PROGRESSIONS.maior, ...PROGRESSIONS.menor]) assert.ok(progRoman(pr).length, pr.name);
+});
+
+test('campo harmônico com sétima: C maior e A menor', async () => {
+  const { harmonicField7 } = await import('../music.js');
+  assert.deepEqual(harmonicField7(0, 'Maior', true).map(c => c.chord), ['Cmaj7', 'Dm7', 'Em7', 'Fmaj7', 'G7', 'Am7', 'Bm7(b5)']);
+  assert.deepEqual(harmonicField7(0, 'Maior', true).map(c => c.roman), ['Imaj7', 'ii7', 'iii7', 'IVmaj7', 'V7', 'vi7', 'viiø']);
+  assert.deepEqual(harmonicField7(9, 'Menor Harmônica', true).map(c => c.chord).slice(0, 2), ['Am(maj7)', 'Bm7(b5)']);
+  assert.equal(harmonicField7(9, 'Menor Harmônica', true)[6].chord, 'G#°7');
+});

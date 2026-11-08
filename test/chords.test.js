@@ -57,3 +57,18 @@ test('allPositions traz mais formas que as espalhadas, sem repetir e com a nota 
   }
   assert.ok(allPositions(0, 'maior', CHORD_TYPES.maior.iv).length > 12);
 });
+
+test('tipos novos escritos certo (m(maj7), 7(b13), 7(#11), maj7(#11), 7(#5), 9sus4, m11, m(add9), 7(b5))', async () => {
+  const { CHORD_TYPES, spelledChord } = await import('../music.js');
+  const sp = (r, t) => spelledChord(r, CHORD_TYPES[t].iv, true, CHORD_TYPES[t].letters).join(' ');
+  assert.equal(sp(0, 'mmaj7'), 'C Eb G B');
+  assert.equal(sp(0, '7b13'), 'C E G Bb Ab');
+  assert.equal(sp(0, '7#11'), 'C E G Bb F#');
+  assert.equal(sp(0, 'maj7#11'), 'C E G B F#');
+  assert.equal(sp(0, '7#5'), 'C E G# Bb');
+  assert.equal(sp(0, '9sus4'), 'C F G Bb D');
+  assert.equal(sp(0, 'm11'), 'C Eb G Bb F');
+  assert.equal(sp(9, 'madd9'), 'A C E B');
+  assert.equal(sp(7, '7b5'), 'G B Db F');
+  assert.equal(sp(10, '7b13'), 'Bb D F Ab Gb');
+});

@@ -1,4 +1,4 @@
-import { CHORD_ORDER, SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, noteName, noteAt, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, spellChordFromRoot, PROGRESSIONS, PROG_STYLES, progressionChords, customChords, itemsFromChords,
+import { CHORD_ORDER, SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, noteName, noteAt, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, spellChordFromRoot, harmonicField7, PROGRESSIONS, PROG_STYLES, progRoman, progNick, progressionChords, tensionChords, customChords, itemsFromChords,
   scaleNotes, harmonicField } from './music.js';
 import { midiAt, playNote, strum, sequence, schedule, stopAll, soundOn, setSound } from './audio.js';
 import { STRINGS as TSTR, nearestString, centsToString, tuneStatus, startMic, stopMic, micOn } from './tuner.js';
@@ -84,7 +84,7 @@ function drawBoard(host, frets, o) {
     playNote(+m);
     if (o.onReveal) o.onReveal(e.target.getAttribute('data-sf'));
   };
-  const perRow = perRowFor(host.clientWidth, frets);
+  const perRow = o.oneRow ? frets : perRowFor(host.clientWidth, frets); // oneRow: braço inteiro numa linha só (menor)
   for (let from = 1; from <= frets; from += perRow)
     drawRow(host, from, Math.min(from + perRow - 1, frets), o);
 }
@@ -156,11 +156,16 @@ function renderGuitarra() {
   const list = g.kind === 'pow' ? powerChords(g.root)
     : g.kind === 'tri' ? stringSetTriads(g.root, t.iv, g.set.split(',').map(Number))
     : neckPositions(g.root, type, t.iv);
-  rootButtons($('gRoots'), g.root, p => { g.root = p; g.pos = null; renderGuitarra(); });
+  rootButtons($('gRoots'), g.root, p => { g.root = p; g.pos = null; g.limit = 0; renderGuitarra(); });
   $('gInfo').innerHTML = `<p><b>${cn[0]}${t.suffix}</b> — ${ptOf(cn[0])}, ${t.label.toLowerCase()}</p>` +
     `<p>Notas: <b>${cn.join(' - ')}</b> &nbsp;(${intervalNames(t).join(' - ')})</p><p>${G_INFO[g.kind] || t.desc}</p>` +
     `<p>${list.length} formas pelo braço, da casa mais baixa para a mais alta.</p><p>${playBtn('gPlay', 'Ouvir')}</p>`;
-  positionCards($('gPositions'), list, g.root, shown, g.pos, i => { g.pos = i; renderGuitarra(); });
+  const lim = g.limit || POS_PAGE, page = list.slice(0, Math.max(lim, g.pos !== null ? g.pos + 1 : 0));
+  positionCards($('gPositions'), page, g.root, shown, g.pos, i => { g.pos = i; renderGuitarra(); });
+  $('gMore').innerHTML = (list.length > page.length ? `<span class="hint">${page.length} de ${list.length}</span><button type="button" class="link" id="gMoreB">Ver mais</button>` : '') +
+    (page.length > POS_PAGE ? '<button type="button" class="link" id="gLessB">Ver menos</button>' : '');
+  if ($('gMoreB')) $('gMoreB').onclick = () => { g.limit = lim + POS_PAGE; renderGuitarra(); };
+  if ($('gLessB')) $('gLessB').onclick = () => { g.limit = POS_PAGE; if (g.pos !== null && g.pos >= POS_PAGE) g.pos = null; renderGuitarra(); $('gPositions').scrollIntoView(); tabJump = true; };
   const v = g.pos !== null ? list[g.pos] : null;
   $('gPlay').onclick = () => strumV(v || list[0]);
   $('gSel').innerHTML = v ? `<p><b>Como tocar:</b></p>${howTo(v, names)}<p>Toque na forma de novo para ver todas as posições.</p>`
@@ -189,13 +194,15 @@ const progRegKey = () => { const p = state.p; return p.ed ? 'ed' : `${p.src}|${p
 function voiceSlot(i) {
   const p = state.p, items = p.ed ? p.ed.items : p.src === 'mine' && myProgs[p.mine] ? myProgs[p.mine].items : null;
   if (items) return {
-    get: () => items[i] && items[i].fk === p.key ? items[i].f : null,
+    // a forma escolhida vale para o tom e o tipo de desenho em que foi escolhida
+    get: () => items[i] && items[i].fk === p.key && (items[i].fd || 'normal') === (p.kind || 'normal') ? items[i].f : null,
     set: f => {
-      if (f) { items[i].f = f; items[i].fk = p.key; } else { delete items[i].f; delete items[i].fk; }
+      if (f) { items[i].f = f; items[i].fk = p.key; if (p.kind && p.kind !== 'normal') items[i].fd = p.kind; else delete items[i].fd; }
+      else { delete items[i].f; delete items[i].fk; delete items[i].fd; }
       if (!p.ed) saveMine();
     },
   };
-  const k = `${p.mode}|${PROGRESSIONS[p.mode][p.idx].name}|${p.key}|${i}`;
+  const k = `${p.mode}|${PROGRESSIONS[p.mode][p.idx].name}|${p.key}|${i}` + (p.kind && p.kind !== 'normal' ? '|' + p.kind : '');
   return {
     get: () => readyVoices[k] || null,
     set: f => {
@@ -230,7 +237,8 @@ function curProg() {
   p.src = 'ready';
   const list = PROGRESSIONS[p.mode];
   if (p.idx >= list.length) p.idx = 0;
-  return { name: list[p.idx].name, desc: list[p.idx].desc, chords: progressionChords(p.key, p.mode, list[p.idx], state.sharps) };
+  const pr = list[p.idx], nick = progNick(pr);
+  return { name: (nick ? nick + ': ' : '') + progRoman(pr), desc: pr.desc, chords: progressionChords(p.key, p.mode, pr, state.sharps) };
 }
 // os acordes da sequência, um ao lado do outro, cada um com o desenho de como tocar
 const seqCards = (chords, step) => '<div class="pseq">' + chords.map((x, i) => {
@@ -256,16 +264,25 @@ const jumpTo = id => { tabJump = true; $(id).scrollIntoView(); };
 const pTop = $('pTop'), pTopHome = $('pTopHome');
 // lista das progressões prontas, com filtro de estilo e busca (nome, explicação ou acordes)
 const fold = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[–-]/g, ' ').replace(/\s+/g, ' ').trim();
+const squeeze = list => {
+  const out = [];
+  list.forEach(x => { const l = out[out.length - 1]; if (l && l.x === x) l.n++; else out.push({ x, n: 1 }); });
+  return out.map(o => o.n > 1 ? `${o.x} ×${o.n}` : o.x).join(list.length > 6 ? ' · ' : ' – ');
+};
 function renderPList() {
   const p = state.p, q = fold($('pSearch').value || '');
-  $('pStyles').innerHTML = PROG_STYLES.map(([k, t]) => `<button type="button" class="${(p.style || '') === k ? 'on' : ''}" data-k="${k}">${t}</button>`).join('');
+  // só os estilos que têm progressão neste modo (maior ou menor)
+  const styles = PROG_STYLES.filter(([k]) => !k || PROGRESSIONS[p.mode].some(pr => (pr.tags || []).includes(k)));
+  if (!styles.some(([k]) => k === (p.style || ''))) p.style = '';
+  $('pStyles').innerHTML = styles.map(([k, t]) => `<button type="button" class="${(p.style || '') === k ? 'on' : ''}" data-k="${k}">${t}</button>`).join('');
   $('pStyles').querySelectorAll('button').forEach(b => b.onclick = () => { p.style = b.dataset.k; renderPList(); });
   const cards = PROGRESSIONS[p.mode].map((pr, i) => {
     if (p.style && !(pr.tags || []).includes(p.style)) return '';
     const ch = progressionChords(p.key, p.mode, pr, state.sharps), names = ch.map(c => c.name);
     if (q && !fold([pr.name, pr.desc, ...names, ...ch.map(c => c.roman)].join(' ')).includes(q)) return '';
-    const seq = pr.chords.length > 6 ? names.slice(0, 12).join(' · ') : names.join(' – ');
-    return `<button type="button" class="pcard ${p.src === 'ready' && i === p.idx ? 'active' : ''}" data-i="${i}"><b>${pr.name}</b><span>${seq}</span></button>`;
+    // cartão sempre do mesmo tamanho: uma linha para os graus e uma para os acordes; repetições viram "×4"
+    const roman = squeeze(pr.chords.map(c => c[3])), seq = squeeze(names), nick = progNick(pr);
+    return `<button type="button" class="pcard ${p.src === 'ready' && i === p.idx ? 'active' : ''}" data-i="${i}" title="${nick ? nick + ': ' : ''}${progRoman(pr)}"><b>${roman}</b><span>${nick ? `<em>${nick}</em> · ` : ''}${seq}</span></button>`;
   }).join('');
   $('pList').innerHTML = cards || '<p class="hint">Nenhuma progressão com essa busca. Troque o estilo para <b>Todas</b> ou apague o que digitou.</p>';
   $('pList').querySelectorAll('.pcard').forEach(b => b.onclick = () => { stopProg(); p.src = 'ready'; p.idx = +b.dataset.i; p.step = 0; p.pos = null; renderProgressoes(); });
@@ -306,11 +323,13 @@ function renderProgressoes() {
   });
   $('pNew').onclick = () => { stopProg(); p.ed = { id: null, name: '', items: [], root: p.key, msg: '', del: false }; p.step = 0; p.pos = null; renderProgressoes(); jumpTo('pDetail'); };
 
-  const cur = curProg(), chords = cur.chords;
-  chords.forEach((x, i) => { const l = chordPositions(x); x.v = findVoicing(l, voiceSlot(i).get()) || ((p.kind || 'normal') === 'normal' ? bestVoicing(x.rootPc, x.type) : l[0]); });
+  const cur = curProg();
+  if (ed && p.kind === 'ten') p.kind = 'normal'; // montando, os acordes ficam como ele pôs
+  const chords = p.kind === 'ten' ? tensionChords(p.key, p.mode, cur.chords, state.sharps) : cur.chords;
+  chords.forEach((x, i) => { const l = chordPositions(x); x.v = findVoicing(l, voiceSlot(i).get()) || (['normal', 'ten'].includes(p.kind || 'normal') ? bestVoicing(x.rootPc, x.type) : l[0]); });
   if (p.step >= chords.length) p.step = Math.max(0, chords.length - 1);
   const c = chords[p.step];
-  const playRow = chords.length ? `<p>${p.playing ? STOP_BTN : playBtn('pPlay', 'Tocar a progressão')}</p>` : '';
+  const playRow = ''; // sem botão de tocar a sequência: tocar num acorde já toca o som
   const outNote = chords.some(x => x.inField === false)
     ? '<p class="hint">Borda tracejada: acorde <b>de fora</b> do campo harmônico do tom. Pode usar à vontade, ele só dá uma cor diferente à música.</p>' : '';
   let html = `<h2>${ed ? 'Montando: ' : ''}${esc(cur.name)} em ${keyName} ${p.mode}</h2>${cur.desc ? `<p>${cur.desc}</p>` : ''}`;
@@ -324,9 +343,10 @@ function renderProgressoes() {
     if (chords.length) {
       const rk = progRegKey(), cur = p.allReg && p.allReg.k === rk ? p.allReg.r : '';
       const kind = p.kind || 'normal';
-      html += '<div class="roots preg"><b>Desenho:</b> ' + [['normal', 'Normal'], ['pow', 'Power chord (rock)'], ['tri', 'Tríade (3 cordas)']]
+      html += '<div class="roots preg"><b>Desenho:</b> ' + [['normal', 'Normal'], ...(ed ? [] : [['ten', 'Com tensão (jazz)']]), ['pow', 'Power chord (rock)'], ['tri', 'Tríade (3 cordas)']]
         .map(([k, l]) => `<button type="button" data-kind="${k}" class="${k === kind ? 'on' : ''}">${l}</button>`).join('') + '</div>' +
-        (kind === 'pow' ? '<p class="hint">Power chord: só a nota base e a quinta. Não é maior nem menor, por isso serve para todos os acordes. Som forte do rock.</p>'
+        (kind === 'ten' ? '<p class="hint">Com tensão: cada acorde ganha notas a mais (7ª, 9ª), o som rico do jazz e da bossa. Em C maior, o C vira Cmaj7, o Am vira Am7 e o G (5º acorde do tom) vira G9. Os outros maiores viram maj7.</p>'
+          : kind === 'pow' ? '<p class="hint">Power chord: só a nota base e a quinta. Não é maior nem menor, por isso serve para todos os acordes. Som forte do rock.</p>'
           : kind === 'tri' ? '<p class="hint">Tríade: o acorde em só 3 cordas, som leve. Acordes com sétima ou nona ficam só com as 3 notas principais.</p>' : '');
       html += '<div class="roots preg"><b>Tocar tudo em:</b> ' + [['', 'Normal'], ['1', 'Início (1–4)'], ['2', 'Meio (5–8)'], ['3', 'Agudo (9–12)'], ['4', 'Mais agudo (13+)']]
         .map(([k, l]) => `<button type="button" data-ar="${k}" class="${k === cur ? 'on' : ''}">${l}</button>`).join('') +
@@ -358,7 +378,7 @@ function renderProgressoes() {
     if (ed) ed.msg = miss ? `${miss} acorde(s) não têm forma nessa parte e ficaram na forma normal.` : '';
     renderProgressoes();
   });
-  if (chords.length) $('pPlay').onclick = () => {
+  if ($('pPlay')) $('pPlay').onclick = () => {
     if (p.playing) { stopProg(); renderProgressoes(); return; }
     p.playing = true;
     schedule(chords, chords.length > 6 ? 1300 : 1700, (x, i) => {
@@ -374,8 +394,8 @@ function renderProgressoes() {
   };
   if ($('pCustom')) $('pCustom').onclick = () => {
     stopProg();
-    const items = itemsFromChords(p.key, chords, p.mode).map((x, i) => { const f = voiceSlot(i).get(); return f ? { ...x, f, fk: p.key } : x; });
-    p.ed = { id: null, name: `${cur.name} (minha)`.slice(0, 40), items, root: p.key, msg: '', del: false }; p.step = 0; p.pos = null;
+    const items = itemsFromChords(p.key, chords, p.mode).map((x, i) => { const f = voiceSlot(i).get(); return f ? { ...x, f, fk: p.key, ...(p.kind && p.kind !== 'normal' ? { fd: p.kind } : {}) } : x; });
+    p.ed = { id: null, name: `${p.src === 'ready' ? (progNick(PROGRESSIONS[p.mode][p.idx]) || progRoman(PROGRESSIONS[p.mode][p.idx])) : cur.name} (minha)`.slice(0, 40), items, root: p.key, msg: '', del: false }; p.step = 0; p.pos = null;
     renderProgressoes(); jumpTo('pDetail');
   };
   if ($('pEdit')) $('pEdit').onclick = () => {
@@ -553,45 +573,112 @@ function renderEscalas() {
 /* ---------- ABA CAMPOS ---------- */
 function renderCampos() {
   const sel = state.fsel;
+  // Desenho e Tocar tudo em, como em Progressões
+  const fk = state.fkind || 'normal', fr = state.freg || '';
+  $('fOpts').innerHTML = '<div class="roots preg"><b>Desenho:</b> ' + [['normal', 'Normal'], ['ten', 'Com tensão (jazz)'], ['pow', 'Power chord (rock)'], ['tri', 'Tríade (3 cordas)']]
+      .map(([k, l]) => `<button type="button" data-fk="${k}" class="${k === fk ? 'on' : ''}">${l}</button>`).join('') + '</div>' +
+    '<div class="roots preg"><b>Tocar tudo em:</b> ' + [['', 'Normal'], ['1', 'Início (1–4)'], ['2', 'Meio (5–8)'], ['3', 'Agudo (9–12)'], ['4', 'Mais agudo (13+)']]
+      .map(([k, l]) => `<button type="button" data-fr="${k}" class="${k === fr ? 'on' : ''}">${l}</button>`).join('') + '</div>' +
+    (fk === 'ten' ? '<p class="hint">Com tensão: cada acorde ganha a sétima, como no jazz e na bossa (Cmaj7, Dm7, G7…).</p>'
+      : fk === 'pow' ? '<p class="hint">Power chord: só a nota base e a quinta, o som forte do rock.</p>'
+      : fk === 'tri' ? '<p class="hint">Tríade: o acorde em só 3 cordas, som leve.</p>' : '');
+  $('fOpts').querySelectorAll('[data-fk]').forEach(b => b.onclick = () => { state.fkind = b.dataset.fk; renderCampos(); });
+  $('fOpts').querySelectorAll('[data-fr]').forEach(b => b.onclick = () => { state.freg = b.dataset.fr; renderCampos(); });
+  $('fieldCards').classList.toggle('ten', fk === 'ten'); // nomes longos (Bm7(b5)): 4 por linha para não encavalar
+  // o campo escolhido abre embaixo de todos os cartões: os 7 acordes lado a lado, com o desenho de cada um
+  const sname = sel && sel.scale;
   $('fieldCards').innerHTML = Object.keys(SCALES).map(name => {
-    const f = harmonicField(state.root, name, state.sharps);
+    const f = fieldOf(name);
     if (!f) return '';
     const cells = f.map((c, i) => {
       const on = sel && sel.scale === name && sel.idx === i;
-      return `<button type="button" class="cell ${on ? 'on' : ''} ${i === 0 ? 'root' : ''}" data-i="${i}" data-s="${name}"><b>${c.chord}</b><small>${c.roman}</small></button>`;
+      return `<button type="button" class="cell ${on ? 'on' : ''} ${i === 0 ? 'root' : ''}" data-i="${i}" data-s="${name}" title="${c.chord} (${c.roman})"><b>${c.chord}</b><small>${c.roman}</small></button>`;
     }).join('');
-    return `<div class="scard"><div class="name">${f[0].chord.replace(/[m°]$/, '')} ${name}</div><div class="row">${cells}</div></div>`;
-  }).join('');
-  document.querySelectorAll('#fieldCards .cell').forEach(c => c.onclick = () => {
-    const name = c.dataset.s, i = +c.dataset.i;
-    const same = sel && sel.scale === name && sel.idx === i;
-    state.fsel = same ? null : { scale: name, idx: i };
-    if (!same) { const f = harmonicField(state.root, name, state.sharps)[i]; strumV(bestVoicing(f.notes[0], f.type)); }
-    renderCampos();
-  });
-  const panel = $('fpanel');
-  const f = sel && harmonicField(state.root, sel.scale, state.sharps);
-  panel.classList.toggle('empty', !f);
-  document.body.classList.toggle('sheet-open', !!f && state.tab === 'campos');
-  if (!f) { panel.innerHTML = '<p class="hint">Toque num acorde para ouvir e ver como tocar.</p>'; return; }
-  const c = f[sel.idx];
-  panel.innerHTML = fieldDetail(c, f[0].chord.replace(/[m°]$/, '') + ' ' + sel.scale);
-  $('fPlay').onclick = () => strumV(bestVoicing(c.notes[0], c.type));
+    const card = `<div class="scard${name === sname ? ' active' : ''}"><div class="name">${f[0].rn || f[0].chord.replace(/[m°]$/, '')} ${name}</div><div class="row">${cells}</div></div>`;
+    return card;
+  }).join('') + (sel ? fieldRow(fieldOf(sname), sel.idx, sname) : ''); // os cartões todos em cima; o detalhe abre embaixo deles
+  document.querySelectorAll('#fieldCards .cell').forEach(c => c.onclick = () => pickField(c.dataset.s, +c.dataset.i, true));
+  $('fpanel').hidden = true;
+  document.body.classList.remove('sheet-open');
+  if (sel) bindFrow();
+}
+// tocar num acorde do campo: na mesma escala só troca o quadro de baixo (a tela não se mexe)
+function pickField(name, i, fromCell) {
+  const sel = state.fsel, same = sel && sel.scale === name && sel.idx === i && fromCell;
+  state.fsel = same ? null : { scale: name, idx: i }; state.fshape = null;
+  if (!same) { const f = fieldOf(name)[i]; strumV(fieldShapes(f)[0] || bestVoicing(f.notes[0], f.type)); }
+  tabJump = true;
+  if (!same && sel && sel.scale === name && $('frow')) {
+    // o que foi tocado fica no mesmo lugar da tela (a fila de desenhos ou o cartão da escala)
+    const anchor = () => fromCell ? document.querySelector(`#fieldCards .cell[data-s="${CSS.escape(name)}"]`) : $('frow').querySelector('.pseq');
+    const before = anchor().getBoundingClientRect().top;
+    $('frow').outerHTML = fieldRow(fieldOf(name), i, name);
+    document.querySelectorAll(`#fieldCards .cell[data-s="${CSS.escape(name)}"]`).forEach(b => b.classList.toggle('on', +b.dataset.i === i));
+    bindFrow();
+    scrollBy(0, anchor().getBoundingClientRect().top - before);
+    return;
+  }
+  campoHold(name);
+}
+function bindFrow() {
+  const sel = state.fsel, f = fieldOf(sel.scale), c = f[sel.idx];
+  $('frow').querySelectorAll('.pc').forEach(b => b.onclick = () => pickField(sel.scale, +b.dataset.i, false));
+  $('fPlay').onclick = () => strumV(fieldShapes(c)[0] || bestVoicing(c.notes[0], c.type));
   $('fMore').onclick = () => goChord(c.notes[0], c.type);
-  $('fClose').onclick = () => { state.fsel = null; renderCampos(); };
-  panel.querySelectorAll('.vc').forEach(b => b.onclick = () => strum(fieldShapes(c)[+b.dataset.i].frets));
+  $('fClose').onclick = () => { const n = sel.scale; state.fsel = null; campoHold(n); };
+  const sh = fieldShapes(c);
+  if ($('fMoreShapes')) $('fMoreShapes').onclick = () => { state.fmore = !state.fmore; state.fshape = null; campoHold(sel.scale); };
+  // braço inteiro do acorde escolhido; tocar numa forma acima mostra só ela (sem redesenhar a tela, para não pular)
+  const t = CHORD_TYPES[c.type], rn = c.rn || c.chord.replace(/[m°+]$/, ''), names = nameMap(c.notes, spellChordFromRoot(rn, t.iv, t.letters));
+  const vcs = [...$('frow').querySelectorAll('.vc')];
+  const paint = () => {
+    const v = state.fshape != null && sh[state.fshape];
+    vcs.forEach((b, k) => b.classList.toggle('on', k === state.fshape));
+    drawBoard($('fboard'), 24, { inScale: new Set(c.notes), names, rootPc: c.notes[0], all: false, exact: v ? v.frets : null, oneRow: true });
+  };
+  vcs.forEach(b => b.onclick = () => { state.fshape = state.fshape === +b.dataset.i ? null : +b.dataset.i; strum(sh[+b.dataset.i].frets); paint(); });
+  paint();
+}
+// redesenha Campos sem a tela pular: o cartão da escala tocada fica no mesmo lugar da tela
+const campoHold = name => {
+  const q = () => document.querySelector(`#fieldCards .cell[data-s="${CSS.escape(name)}"]`);
+  const before = q() ? q().getBoundingClientRect().top : null;
+  renderCampos();
+  const after = q() ? q().getBoundingClientRect().top : null;
+  tabJump = true;
+  if (before !== null && after !== null) scrollBy(0, after - before);
+};
+function fieldRow(f, idx, name) {
+  const chords = f.map(c => {
+    const t = CHORD_TYPES[c.type], rn = c.rn || c.chord.replace(/[m°+]$/, '');
+    return { name: c.chord, roman: c.roman, rootPc: c.notes[0], pcs: c.notes, names: spellChordFromRoot(rn, t.iv, t.letters), v: fieldShapes(c)[0] || bestVoicing(c.notes[0], c.type) };
+  });
+  return `<div class="fpanel frow" id="frow">${fieldDetail(f[idx], (f[0].rn || f[0].chord.replace(/[m°]$/, '')) + ' ' + name)}` +
+    `<h3>Os 7 acordes do campo</h3>${seqCards(chords, idx)}` +
+    `<h3>${f[idx].chord} no braço inteiro (casas 1 a 24)</h3><div class="board-wrap fboard"><div id="fboard"></div></div></div>`;
 }
 // as formas mais fáceis de um acorde do campo (até 4)
-const fieldShapes = f => voicingsOf(f.notes[0], f.type).filter(v => v.bassIsRoot).slice(0, 4);
+// as formas de um acorde do campo, conforme o Desenho e a parte do braço escolhidos (até 4)
+const fieldShapes = f => {
+  const r = f.notes[0], k = state.fkind || 'normal';
+  // braço inteiro (até a casa 24): a mais fácil primeiro, depois uma de cada região, subindo
+  let list = k === 'pow' ? powerChords(r) : k === 'tri' ? triadsOf(r, CHORD_TYPES[f.type].iv) : allPositions(r, f.type, CHORD_TYPES[f.type].iv);
+  if (state.freg) list = filterVoicings(list, { region: state.freg, open: 'any', barre: 'any', bass: 'any', min: 0 });
+  else if (k === 'normal' || k === 'ten') { const easy = voicingsOf(r, f.type).find(v => v.bassIsRoot); list = [easy, ...list.filter(v => v !== easy && (!easy || v.frets.join() !== easy.frets.join())).sort((a, b) => a.minF - b.minF)].filter(Boolean); }
+  const out = list.slice(0, state.fmore ? 24 : 8); out.total = list.length; return out;
+};
+const fieldOf = name => (state.fkind === 'ten' ? harmonicField7 : harmonicField)(state.root, name, state.sharps);
 function fieldDetail(f, where) {
-  const t = CHORD_TYPES[f.type], rootName = f.chord.replace(/[m°+]$/, '');
+  const t = CHORD_TYPES[f.type], rootName = f.rn || f.chord.replace(/[m°+]$/, '');
   const cn = spellChordFromRoot(rootName, t.iv, t.letters), names = nameMap(f.notes, cn); // mesma grafia do campo (Bb em F maior)
   const shapes = fieldShapes(f);
+  const more = shapes.total > 8 ? `<p class="morebtns"><span class="hint">${shapes.length} de ${shapes.total} formas</span><button type="button" class="link" id="fMoreShapes">${state.fmore ? 'Ver menos' : 'Ver mais formas'}</button></p>` : '';
+  const none = !shapes.length ? '<p class="hint">Nenhuma forma deste acorde nessa parte do braço. Escolha outra em <b>Tocar tudo em</b>.</p>' : '';
   return `<button type="button" class="close" id="fClose" aria-label="Fechar">✕</button>
     <p><b class="big">${f.chord}</b> — ${ptOf(rootName)}, ${t.label.toLowerCase()} · grau <b>${f.roman}</b> de ${where}</p>
     <p>Notas: <b>${cn.join(' - ')}</b></p>
     <p>${playBtn('fPlay', 'Ouvir')} <button type="button" class="link" id="fMore">Ver todas as formas e o braço inteiro →</button></p>
-    <div class="shapes">${shapes.map((v, i) => `<button type="button" class="vc" data-i="${i}">${chordSvg(v, f.notes[0], names)}<small>${v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta'}</small></button>`).join('')}</div>`;
+    <div class="shapes">${shapes.map((v, i) => `<button type="button" class="vc" data-i="${i}">${chordSvg(v, f.notes[0], names)}<small>${v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta'}</small></button>`).join('')}</div>${more}${none}`;
 }
 function clearChordFilters() {
   state.cf = { region: 'all', open: 'any', barre: 'any', bass: 'root', min: 4 };
@@ -670,6 +757,9 @@ function renderAcordes() {
   drawBoard($('board2'), v ? (v.maxF > 12 ? 24 : 12) : state.frets2, { inScale: new Set(pcs), names, rootPc, all: false, exact: v ? v.frets : null });
 }
 function fillChordSelects() {
+  // Guitarra, acordes com tensão: todos os tipos de 4 notas ou mais (e os suspensos/add9)
+  if (!$('gext').options.length) CHORD_ORDER.filter(k => !['maior', 'menor', '5', 'dim', 'aug', 'sus2'].includes(k)).forEach(k => $('gext').add(new Option(CHORD_TYPES[k].suffix + ' — ' + CHORD_TYPES[k].label.replace(/ \(.*\)$/, ''), k)));
+  $('gext').value = state.g.ext;
   if (!$('ctype').options.length) CHORD_ORDER.filter(k => k !== '5').forEach(k => $('ctype').add(new Option(CHORD_TYPES[k].label, k)));
   $('ctype').value = state.ctype;
 }
@@ -727,7 +817,7 @@ $('hide').onchange = e => { state.hide = e.target.value === '1'; state.revealed.
 $('frets2').onchange = e => { state.frets2 = +e.target.value; render(); };
 $('ctype').onchange = e => { state.ctype = e.target.value; state.cvoice = null; render(); };
 [['gkind', 'kind'], ['gtri', 'tri'], ['gset', 'set'], ['gext', 'ext'], ['glabels', 'labels']].forEach(([id, k]) =>
-  $(id).onchange = e => { state.g[k] = e.target.value; state.g.pos = null; render(); });
+  $(id).onchange = e => { state.g[k] = e.target.value; state.g.pos = null; state.g.limit = 0; render(); });
 [['pmode', 'mode'], ['plabels', 'labels']].forEach(([id, k]) =>
   $(id).onchange = e => { state.p[k] = e.target.value; if (k === 'mode' && state.p.src === 'ready') { state.p.idx = 0; state.p.step = 0; } state.p.pos = null; render(); });
 [['region', 'region'], ['copen', 'open'], ['cbarre', 'barre'], ['cbass', 'bass'], ['cmin', 'min']].forEach(([id, k]) =>
@@ -783,7 +873,7 @@ function segmentize(id) {
   const sync = () => box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === sel.value));
   sync();
 }
-['hide', 'frets', 'frets2', 'region', 'copen', 'cbarre', 'cbass', 'cmin', 'gkind', 'gtri', 'gset', 'gext', 'glabels', 'pmode', 'plabels'].forEach(segmentize);
+['hide', 'frets', 'frets2', 'region', 'copen', 'cbarre', 'cbass', 'cmin', 'gkind', 'gtri', 'gset', 'glabels', 'pmode', 'plabels'].forEach(segmentize);
 
 // listas longas: menu próprio no lugar da lista nativa do navegador
 const dropdowns = [];
@@ -830,7 +920,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') dropdowns.fo
 if (!$('scale').options.length) Object.keys(SCALES).forEach(n => $('scale').add(new Option(n, n)));
 $('scale').onchange = e => { state.scale = e.target.value; state.sel = null; render(); };
 fillChordSelects();
-dropdown('root', 3); dropdown('scale'); dropdown('ctype');
+dropdown('root', 3); dropdown('scale'); dropdown('ctype'); dropdown('gext');
 
 observe(() => document.documentElement.style.setProperty('--head-h', $('head').offsetHeight + 'px'), $('head'));
 window.addEventListener('scroll', () => $('head').classList.toggle('stuck', scrollY > 4), { passive: true });
