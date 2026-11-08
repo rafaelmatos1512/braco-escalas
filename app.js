@@ -184,6 +184,7 @@ const STOP_BTN = '<button type="button" class="play stop" id="pPlay"><svg viewBo
 const READY_V_KEY = 'progVoices';
 let readyVoices = {};
 try { const v = JSON.parse(localStorage.getItem(READY_V_KEY) || '{}'); if (v && typeof v === 'object') readyVoices = v; } catch {}
+const progRegKey = () => { const p = state.p; return p.ed ? 'ed' : `${p.src}|${p.src === 'mine' ? p.mine : p.mode + p.idx}|${p.key}`; };
 function voiceSlot(i) {
   const p = state.p, items = p.ed ? p.ed.items : p.src === 'mine' && myProgs[p.mine] ? myProgs[p.mine].items : null;
   if (items) return {
@@ -299,6 +300,12 @@ function renderProgressoes() {
       '<button type="button" id="eLeft">← Mover</button><button type="button" id="eRight">Mover →</button>' +
       '<button type="button" id="eDup">Repetir</button><button type="button" id="eRm" class="danger">Tirar</button></div>';
     html += playRow;
+    if (chords.length) {
+      const rk = progRegKey(), cur = p.allReg && p.allReg.k === rk ? p.allReg.r : '';
+      html += '<div class="roots preg"><b>Tocar tudo em:</b> ' + [['', 'Normal'], ['1', 'Início (1–4)'], ['2', 'Meio (5–8)'], ['3', 'Agudo (9–12)'], ['4', 'Mais agudo (13+)']]
+        .map(([k, l]) => `<button type="button" data-ar="${k}" class="${k === cur ? 'on' : ''}">${l}</button>`).join('') +
+        '</div><p class="hint">Muda a forma de todos os acordes de uma vez para aquela parte do braço.</p>';
+    }
     const t = CHORD_TYPES[c.type];
     html += `<p><b>${c.name}</b> (${ptOf(c.rootName)}, ${t.label.toLowerCase()}): notas <b>${c.names.join(' - ')}</b>.</p>`;
   }
@@ -307,11 +314,22 @@ function renderProgressoes() {
     html += '<p><button type="button" class="link" id="pEdit">Mudar esta progressão (pôr, tirar ou trocar acordes)</button> ' +
       `<button type="button" class="link danger" id="pDelMine">${armed ? 'Toque de novo para excluir de vez' : 'Excluir esta progressão'}</button></p>`;
   }
-  if (!cur.mine && !ed) html += '<p><button type="button" class="link" id="pCustom">Personalizar esta progressão (pôr, tirar ou trocar acordes)</button></p><p class="hint">A pronta continua igual. A sua versão fica guardada no alto da tela.</p>';
+  if (!cur.mine && !ed) html += '<p><button type="button" class="link" id="pCustom">Personalizar esta progressão (pôr, tirar ou trocar acordes)</button></p><p class="hint">A pronta continua igual. A sua versão fica guardada em <b>As suas progressões</b>, embaixo das prontas.</p>';
   $('pDetail').innerHTML = html;
 
   $('pDetail').querySelectorAll('.pc').forEach(b => b.onclick = () => {
     stopProg(); p.step = +b.dataset.i; p.pos = null; strumV(chords[p.step].v); renderProgressoes();
+  });
+  $('pDetail').querySelectorAll('[data-ar]').forEach(b => b.onclick = () => {
+    stopProg(); const r = b.dataset.ar; let miss = 0;
+    chords.forEach((x, i) => {
+      const f = r ? filterVoicings(chordPositions(x), { region: r, open: 'any', barre: 'any', bass: 'any', min: 0 })[0] : null;
+      if (r && !f) miss++;
+      voiceSlot(i).set(f ? f.frets : null);
+    });
+    p.allReg = { k: progRegKey(), r }; p.pos = null;
+    if (ed) ed.msg = miss ? `${miss} acorde(s) não têm forma nessa parte e ficaram na forma normal.` : '';
+    renderProgressoes();
   });
   if (chords.length) $('pPlay').onclick = () => {
     if (p.playing) { stopProg(); renderProgressoes(); return; }
@@ -391,7 +409,7 @@ function renderEditor(chords, keyName, scale) {
     '<div class="roots" id="eRoots"></div>' +
     `<div class="etypes">${byType.map((x, i) => `<button type="button" data-t="${types[i]}"><b>${x.name}</b><small>${CHORD_TYPES[types[i]].label}</small></button>`).join('')}</div>` +
     '<h3><b>4º</b> Confira a sequência</h3><p class="hint">Ela aparece lá em cima, na ordem da música. Toque num acorde para ouvir e para mover, repetir ou tirar.</p>' +
-    '<h3><b>5º</b> Guarde</h3><p class="hint">Depois de guardar, ela fica no alto da tela, abaixo de <b>+ Criar</b>, para abrir quando quiser.</p>' +
+    '<h3><b>5º</b> Guarde</h3><p class="hint">Depois de guardar, ela fica em <b>As suas progressões</b>, embaixo das prontas, para abrir quando quiser.</p>' +
     '<div class="dlg-actions"><button type="button" class="play" id="eSave">Guardar a progressão</button>' + cancelBtn +
     (ed.id ? `<button type="button" class="link danger" id="eDelAll">${delAllArmed ? 'Toque de novo para apagar de vez' : 'Apagar esta progressão'}</button>` : '') + '</div>';
   $('eTom').appendChild(pTop);

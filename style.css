@@ -350,7 +350,7 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 .pfind input:focus{outline:none;border-color:var(--acc)}
 .mini-help{margin:6px 0}
 .mini-help summary{cursor:pointer;color:var(--mut);font-size:.92rem}
-#pMine{margin-bottom:6px}
+#pMine{margin-bottom:10px}
 .h3row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .morebtns{margin-left:auto;display:flex;gap:10px}
 /* Acordes: lista de formas numa caixa com rolagem própria */
@@ -361,3 +361,8 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 #tab-progressoes.editing #pDetail{margin-bottom:0;border-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;padding-bottom:4px}
 #tab-progressoes.editing #pEditor{margin-top:0;border-top:0;border-top-left-radius:0;border-top-right-radius:0;padding-top:4px;box-shadow:0 8px 10px -6px var(--shadow);position:relative;z-index:0}
 .ptools{align-items:center}.ptools .morebtns{align-items:center}
+/* montagem: botões de acorde mais compactos (menos rolagem) */
+.etypes button,.efield button{padding:5px 8px;line-height:1.2}
+.etypes{grid-template-columns:repeat(auto-fill,minmax(calc(108px * var(--fs)),1fr));gap:5px;margin:8px 0}
+.etypes b,.efield b{font-size:1rem}
+.etypes small,.efield small{font-size:.72rem}
