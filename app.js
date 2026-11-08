@@ -184,6 +184,7 @@ const STOP_BTN = '<button type="button" class="play stop" id="pPlay"><svg viewBo
 const READY_V_KEY = 'progVoices';
 let readyVoices = {};
 try { const v = JSON.parse(localStorage.getItem(READY_V_KEY) || '{}'); if (v && typeof v === 'object') readyVoices = v; } catch {}
+const posFilter = () => { const p = state.p; return { region: 'all', open: p.fOpen || 'any', barre: p.fBarre || 'any', bass: 'any', min: +p.fMin || 0 }; };
 const progRegKey = () => { const p = state.p; return p.ed ? 'ed' : `${p.src}|${p.src === 'mine' ? p.mine : p.mode + p.idx}|${p.key}`; };
 function voiceSlot(i) {
   const p = state.p, items = p.ed ? p.ed.items : p.src === 'mine' && myProgs[p.mine] ? myProgs[p.mine].items : null;
@@ -205,8 +206,20 @@ function voiceSlot(i) {
 }
 const posMemo = {};
 const POS_PAGE = 12;
-const chordPositions = c => posMemo[c.rootPc + ':' + c.type] || (posMemo[c.rootPc + ':' + c.type] =
-  c.type === '5' ? powerChords(c.rootPc) : allPositions(c.rootPc, c.type, CHORD_TYPES[c.type].iv)); // power chord usa só 2 ou 3 cordas: o gerador comum não acha
+// tipo de desenho em Progressões: normal, power chord (rock) ou tríade (3 cordas), como na tela Guitarra
+const TRI_SETS = [[5, 4, 3], [4, 3, 2], [3, 2, 1], [2, 1, 0]];
+const triadsOf = (rootPc, iv) => {
+  const core = iv.slice(0, 3); // nota base, terça (ou 2ª/4ª) e quinta
+  if (new Set(core.map(i => i % 12)).size < 3) return powerChords(rootPc);
+  return TRI_SETS.flatMap(st => stringSetTriads(rootPc, core, st)).sort((a, b) => a.minF - b.minF || a.maxF - b.maxF);
+};
+const chordPositions = c => {
+  const kind = state.p.kind || 'normal', k = kind + ':' + c.rootPc + ':' + c.type;
+  return posMemo[k] || (posMemo[k] =
+    kind === 'pow' || c.type === '5' ? powerChords(c.rootPc) // power chord usa só 2 ou 3 cordas: o gerador comum não acha
+    : kind === 'tri' ? triadsOf(c.rootPc, CHORD_TYPES[c.type].iv)
+    : allPositions(c.rootPc, c.type, CHORD_TYPES[c.type].iv));
+};
 
 function stopProg() { if (state.p.playing) { stopAll(); state.p.playing = false; } }
 function curProg() {
@@ -274,7 +287,15 @@ function renderProgressoes() {
 
   // listas: prontas e as minhas
   renderPList();
-  $('pMine').innerHTML = '<button type="button" class="pcard new" id="pNew"><b>+ Criar a minha progressão</b><span>Com qualquer acorde, quantos quiser. Fica guardada neste aparelho.</span></button>' + myProgs.map((m, i) => {
+  // duas listas no mesmo lugar: as prontas ou as minhas (um botão troca)
+  if (!p.which) p.which = p.src === 'mine' && myProgs.length ? 'mine' : 'ready';
+  if (p.which === 'mine' && !myProgs.length) p.which = 'ready';
+  $('pWhich').innerHTML = `<button type="button" data-w="ready" class="${p.which === 'ready' ? 'on' : ''}">Prontas</button>` +
+    `<button type="button" data-w="mine" class="${p.which === 'mine' ? 'on' : ''}">As minhas (${myProgs.length})</button>`;
+  $('pWhich').querySelectorAll('button').forEach(b => b.onclick = () => { p.which = b.dataset.w; renderProgressoes(); });
+  $('pReady').hidden = p.which !== 'ready';
+  $('pMine').hidden = p.which !== 'mine';
+  $('pMine').innerHTML = (myProgs.length ? '' : '<p class="hint">Você ainda não criou nenhuma. Toque em <b>+ Criar progressão</b>.</p>') + myProgs.map((m, i) => {
     const ch = customChords(m.key, m.mode, m.items, state.sharps);
     return `<button type="button" class="pcard ${p.src === 'mine' && i === p.mine ? 'active' : ''}" data-i="${i}"><b>${esc(m.name)}</b>` +
       `<span>${ch.slice(0, 12).map(c => c.name).join(' – ')}${ch.length > 12 ? ' …' : ''} · ${ch.length} acorde${ch.length > 1 ? 's' : ''}</span></button>`;
@@ -286,7 +307,7 @@ function renderProgressoes() {
   $('pNew').onclick = () => { stopProg(); p.ed = { id: null, name: '', items: [], root: p.key, msg: '', del: false }; p.step = 0; p.pos = null; renderProgressoes(); jumpTo('pDetail'); };
 
   const cur = curProg(), chords = cur.chords;
-  chords.forEach((x, i) => { x.v = findVoicing(chordPositions(x), voiceSlot(i).get()) || bestVoicing(x.rootPc, x.type); });
+  chords.forEach((x, i) => { const l = chordPositions(x); x.v = findVoicing(l, voiceSlot(i).get()) || ((p.kind || 'normal') === 'normal' ? bestVoicing(x.rootPc, x.type) : l[0]); });
   if (p.step >= chords.length) p.step = Math.max(0, chords.length - 1);
   const c = chords[p.step];
   const playRow = chords.length ? `<p>${p.playing ? STOP_BTN : playBtn('pPlay', 'Tocar a progressão')}</p>` : '';
@@ -302,6 +323,11 @@ function renderProgressoes() {
     html += playRow;
     if (chords.length) {
       const rk = progRegKey(), cur = p.allReg && p.allReg.k === rk ? p.allReg.r : '';
+      const kind = p.kind || 'normal';
+      html += '<div class="roots preg"><b>Desenho:</b> ' + [['normal', 'Normal'], ['pow', 'Power chord (rock)'], ['tri', 'Tríade (3 cordas)']]
+        .map(([k, l]) => `<button type="button" data-kind="${k}" class="${k === kind ? 'on' : ''}">${l}</button>`).join('') + '</div>' +
+        (kind === 'pow' ? '<p class="hint">Power chord: só a nota base e a quinta. Não é maior nem menor, por isso serve para todos os acordes. Som forte do rock.</p>'
+          : kind === 'tri' ? '<p class="hint">Tríade: o acorde em só 3 cordas, som leve. Acordes com sétima ou nona ficam só com as 3 notas principais.</p>' : '');
       html += '<div class="roots preg"><b>Tocar tudo em:</b> ' + [['', 'Normal'], ['1', 'Início (1–4)'], ['2', 'Meio (5–8)'], ['3', 'Agudo (9–12)'], ['4', 'Mais agudo (13+)']]
         .map(([k, l]) => `<button type="button" data-ar="${k}" class="${k === cur ? 'on' : ''}">${l}</button>`).join('') +
         '</div><p class="hint">Muda a forma de todos os acordes de uma vez para aquela parte do braço.</p>';
@@ -314,16 +340,17 @@ function renderProgressoes() {
     html += '<p><button type="button" class="link" id="pEdit">Mudar esta progressão (pôr, tirar ou trocar acordes)</button> ' +
       `<button type="button" class="link danger" id="pDelMine">${armed ? 'Toque de novo para excluir de vez' : 'Excluir esta progressão'}</button></p>`;
   }
-  if (!cur.mine && !ed) html += '<p><button type="button" class="link" id="pCustom">Personalizar esta progressão (pôr, tirar ou trocar acordes)</button></p><p class="hint">A pronta continua igual. A sua versão fica guardada em <b>As suas progressões</b>, embaixo das prontas.</p>';
+  if (!cur.mine && !ed) html += '<p><button type="button" class="link" id="pCustom">Personalizar esta progressão (pôr, tirar ou trocar acordes)</button></p><p class="hint">A pronta continua igual. A sua versão fica guardada em <b>As minhas</b>, no alto da lista.</p>';
   $('pDetail').innerHTML = html;
 
   $('pDetail').querySelectorAll('.pc').forEach(b => b.onclick = () => {
     stopProg(); p.step = +b.dataset.i; p.pos = null; strumV(chords[p.step].v); renderProgressoes();
   });
+  $('pDetail').querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { stopProg(); p.kind = b.dataset.kind; p.pos = null; p.posLimit = POS_PAGE; renderProgressoes(); });
   $('pDetail').querySelectorAll('[data-ar]').forEach(b => b.onclick = () => {
     stopProg(); const r = b.dataset.ar; let miss = 0;
     chords.forEach((x, i) => {
-      const f = r ? filterVoicings(chordPositions(x), { region: r, open: 'any', barre: 'any', bass: 'any', min: 0 })[0] : null;
+      const f = r ? filterVoicings(chordPositions(x), { ...posFilter(), region: r })[0] : null;
       if (r && !f) miss++;
       voiceSlot(i).set(f ? f.frets : null);
     });
@@ -372,7 +399,17 @@ function renderProgressoes() {
   const chordId = c.rootPc + ':' + c.type;
   if (p.posChord !== chordId) { p.posChord = chordId; p.posLimit = POS_PAGE; }
   const region = p.posRegion || 'all';
-  const found = filterVoicings(pos, { region, open: 'any', barre: 'any', bass: 'any', min: 0 });
+  const found = filterVoicings(pos, { ...posFilter(), region });
+  // mais filtros (como na tela Acordes): cordas soltas, pestana e quantas cordas soam
+  const fl = [['fOpen', 'Cordas soltas', [['any', 'Tanto faz'], ['without', 'Sem'], ['with', 'Com']]],
+    ['fBarre', 'Pestana', [['any', 'Tanto faz'], ['without', 'Sem'], ['with', 'Com']]],
+    ['fMin', 'Cordas que soam', [['0', 'Qualquer'], ['4', '4 ou mais'], ['5', '5 ou mais'], ['6', 'Todas as 6']]]];
+  $('pFilt').innerHTML = fl.map(([k, t, opts]) => `<div class="roots preg"><b>${t}:</b> ` +
+    opts.map(([v, l]) => `<button type="button" data-fk="${k}" data-fv="${v}" class="${(p[k] || opts[0][0]) === v ? 'on' : ''}">${l}</button>`).join('') + '</div>').join('') +
+    '<p class="hint">Valem para esta lista e para <b>Tocar tudo em</b>.</p>';
+  $('pFilt').querySelectorAll('button').forEach(b => b.onclick = () => { p[b.dataset.fk] = b.dataset.fv; p.posLimit = POS_PAGE; posHold(); });
+  const nAct = ['fOpen', 'fBarre'].filter(k => p[k] && p[k] !== 'any').length + (+p.fMin ? 1 : 0);
+  $('pFiltSum').textContent = nAct ? `Mais filtros (${nAct} ligado${nAct > 1 ? 's' : ''})` : 'Mais filtros';
   let page = found.slice(0, p.posLimit);
   if (v && !page.includes(v) && found.includes(v)) page = [v, ...page.slice(0, -1)]; // a forma escolhida sempre aparece
   $('pPosTools').innerHTML = '<b>Parte do braço:</b> ' + [['all', 'Todas'], ['1', 'Início (1–4)'], ['2', 'Meio (5–8)'], ['3', 'Agudo (9–12)'], ['4', 'Mais agudo (13+)']]
@@ -382,7 +419,7 @@ function renderProgressoes() {
   });
   if (v && !found.includes(v)) $('pPosHint').innerHTML += ' A forma escolhida fica em outra parte do braço: toque em <b>Todas</b> para vê-la.';
   positionCards($('pPositions'), page, c.rootPc, shown, v ? page.indexOf(v) : null, i => { slot.set(i === null ? null : page[i].frets); posHold(); if (i !== null) { tabJump = true; $('board3').scrollIntoView({ behavior: 'smooth', block: 'center' }); } });
-  $('pPosMore').innerHTML = !found.length ? `<p>Nenhuma forma de ${c.name} nesta parte do braço. Escolha outra parte.</p>` : '';
+  $('pPosMore').innerHTML = !found.length ? `<p>Nenhuma forma de ${c.name} com estes filtros. Escolha outra parte do braço ou mude os filtros.</p>` : '';
   $('pPosMoreTop').innerHTML = (found.length ? `<span class="hint">${page.length} de ${found.length}</span>` : '') +
     (found.length > p.posLimit ? '<button type="button" class="link" id="pMoreF">Ver mais</button>' : '') +
     (p.posLimit > POS_PAGE ? '<button type="button" class="link" id="pLessF">Ver menos</button>' : '');
@@ -409,7 +446,7 @@ function renderEditor(chords, keyName, scale) {
     '<div class="roots" id="eRoots"></div>' +
     `<div class="etypes">${byType.map((x, i) => `<button type="button" data-t="${types[i]}"><b>${x.name}</b><small>${CHORD_TYPES[types[i]].label}</small></button>`).join('')}</div>` +
     '<h3><b>4º</b> Confira a sequência</h3><p class="hint">Ela aparece lá em cima, na ordem da música. Toque num acorde para ouvir e para mover, repetir ou tirar.</p>' +
-    '<h3><b>5º</b> Guarde</h3><p class="hint">Depois de guardar, ela fica em <b>As suas progressões</b>, embaixo das prontas, para abrir quando quiser.</p>' +
+    '<h3><b>5º</b> Guarde</h3><p class="hint">Depois de guardar, ela fica em <b>As minhas</b>, no alto da lista, para abrir quando quiser.</p>' +
     '<div class="dlg-actions"><button type="button" class="play" id="eSave">Guardar a progressão</button>' + cancelBtn +
     (ed.id ? `<button type="button" class="link danger" id="eDelAll">${delAllArmed ? 'Toque de novo para apagar de vez' : 'Apagar esta progressão'}</button>` : '') + '</div>';
   $('eTom').appendChild(pTop);
@@ -442,7 +479,7 @@ function renderEditor(chords, keyName, scale) {
     const i = ed.id ? myProgs.findIndex(m => m.id === ed.id) : -1;
     if (i >= 0) myProgs[i] = rec; else myProgs.push(rec);
     if (!saveMine()) { ed.id = rec.id; ed.msg = 'Não consegui guardar neste aparelho. Tente de novo; se continuar, a memória do navegador pode estar cheia.'; renderProgressoes(); return; }
-    p.ed = null; p.src = 'mine'; p.mine = i >= 0 ? i : myProgs.length - 1; p.pos = null;
+    p.ed = null; p.src = 'mine'; p.which = 'mine'; p.mine = i >= 0 ? i : myProgs.length - 1; p.pos = null;
     renderProgressoes(); jumpTo('pDetail');
   };
   document.querySelectorAll('#tab-progressoes [data-cancel]').forEach(b => b.onclick = () => {

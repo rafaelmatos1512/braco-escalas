@@ -366,3 +366,12 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 .etypes{grid-template-columns:repeat(auto-fill,minmax(calc(108px * var(--fs)),1fr));gap:5px;margin:8px 0}
 .etypes b,.efield b{font-size:1rem}
 .etypes small,.efield small{font-size:.72rem}
+/* Progressões: Prontas / As minhas e o botão Criar na mesma linha */
+.ptabs{align-items:center;margin:4px 0 10px}
+.ptabs #pNew{margin-left:auto}
+/* linhas "Desenho", "Tocar tudo em" e "Parte do braço": texto centrado na altura dos botões e alinhado entre si */
+.preg,#pPosTools{align-items:center}
+.preg>b{min-width:8.5em}
+.pfilt{margin:0 0 10px;padding:6px 12px}
+.pfilt summary{cursor:pointer;font-weight:700;color:var(--acc)}
+.pfilt .preg{margin:8px 0 0}
