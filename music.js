@@ -71,8 +71,11 @@ function bestSpelling(rootPc, pcs, letterSteps, useSharps) {
   };
   const a = build(SHARP[rootPc]), b = build(FLAT[rootPc]);
   if (SHARP[rootPc] === FLAT[rootPc]) return a;
+  // tônica em tecla preta: vale o botão Sustenidos, desde que não precise de ## ou bb (aí fica a grafia com menos acidentes)
+  const pref = useSharps ? a : b, dbl = x => x.some(n => /##|bb/.test(n));
+  if (!dbl(pref)) return pref;
   const da = accidentals(a), db = accidentals(b);
-  return da < db ? a : db < da ? b : (useSharps ? a : b);
+  return da < db ? a : db < da ? b : pref;
 }
 
 export function spelledScale(root, name, useSharps) {

@@ -71,3 +71,14 @@ test('modos: D dórica e G mixolídia usam as notas brancas; toda progressão te
   const ok = new Set(PROG_STYLES.map(s => s[0]).filter(Boolean));
   for (const pr of [...PROGRESSIONS.maior, ...PROGRESSIONS.menor]) assert.ok(pr.tags?.length && pr.tags.every(t => ok.has(t)), pr.name);
 });
+
+test('botão Sustenidos: tônica em tecla preta segue o botão, sem ## nem bb', async () => {
+  const { spelledScale, harmonicField } = await import('../music.js');
+  assert.equal(spelledScale(1, 'Maior', true)[0], 'C#');
+  assert.equal(spelledScale(1, 'Maior', false)[0], 'Db');
+  assert.equal(spelledScale(10, 'Menor', true)[0], 'A#');
+  assert.equal(spelledScale(10, 'Menor', false)[0], 'Bb');
+  assert.equal(spelledScale(3, 'Maior', true)[0], 'Eb'); // D# maior precisaria de F## e C##
+  assert.equal(harmonicField(1, 'Maior', true)[0].chord, 'C#');
+  for (let r = 0; r < 12; r++) for (const s of [true, false]) assert.ok(!spelledScale(r, 'Maior', s).some(n => /##|bb/.test(n)), r + ' ' + s);
+});
