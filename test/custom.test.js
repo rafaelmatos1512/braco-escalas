@@ -39,7 +39,7 @@ test('personalizar: toda progressão pronta vira itens e mantém os mesmos acord
   const { PROGRESSIONS, progressionChords, itemsFromChords } = await import('../music.js');
   for (const mode of ['maior', 'menor']) for (const pr of PROGRESSIONS[mode]) for (let key = 0; key < 12; key++) {
     const ready = progressionChords(key, mode, pr, true);
-    const mine = customChords(key, mode, itemsFromChords(key, ready), true);
+    const mine = customChords(key, mode, itemsFromChords(key, ready, mode), true);
     assert.deepEqual(mine.map(c => [c.rootPc, c.type]), ready.map(c => [c.rootPc, c.type]), pr.name);
     assert.deepEqual(mine.map(c => c.name), ready.map(c => c.name), `${pr.name} em ${key}`);
   }
@@ -48,4 +48,12 @@ test('personalizar: toda progressão pronta vira itens e mantém os mesmos acord
 test('CHORD_ORDER tem todos os tipos, sem repetir', async () => {
   const { CHORD_ORDER } = await import('../music.js');
   assert.deepEqual([...CHORD_ORDER].sort(), Object.keys(CHORD_TYPES).sort());
+});
+
+test('personalizar mantém C#°7 do choro (não vira Db°7) e o tom menor não quebra o grau guardado', async () => {
+  const { PROGRESSIONS, progressionChords, itemsFromChords, customChords } = await import('../music.js');
+  const pr = PROGRESSIONS.maior.find(x => x.name.includes('#I°7'));
+  const items = itemsFromChords(0, progressionChords(0, 'maior', pr, true), 'maior');
+  assert.equal(customChords(0, 'maior', items, true)[1].name, 'C#°7');
+  assert.equal(customChords(0, 'menor', items, true)[1].rootPc, 1);
 });

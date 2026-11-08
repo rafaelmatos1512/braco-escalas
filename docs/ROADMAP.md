@@ -2,13 +2,13 @@
 
 ## Feito (v0.1)
 - Braço 12/24 casas, responsivo (linhas empilhadas no celular).
-- 8 escalas com explicação e receita de tons/semitons.
+- 13 escalas (com os modos Dórico, Frígio, Lídio, Mixolídio e Lócrio) com explicação e receita de tons/semitons.
 - Campo harmônico das 5 escalas de 7 notas (validado contra o app "Escalas e Campo Harmônico").
 - Acordes: 22 tipos (23 com o power chord), gerador automático, filtros, CAGED (maior e menor).
 - Aba Aprender, ajuste de tamanho de letra, nomes duplos (C# / Db).
 - Grafia correta por escala e por acorde (F maior com Bb).
 - Aba Guitarra: power chords, tríades por grupo de cordas (com inversões) e acordes com tensão (7, m7, maj7, 9, 7#9, add9, sus4, 6/9, m7b5) espalhados nas 24 casas.
-- Aba Progressões: 9 progressões em tom maior e 6 em menor, em qualquer tom, com cada acorde no braço inteiro; opção de ver intervalos (1, 3, 5, b7) no braço.
+- Aba Progressões: 22 progressões em tom maior e 12 em menor, com busca e filtro de estilo, em qualquer tom, com cada acorde no braço inteiro; opção de ver intervalos (1, 3, 5, b7) no braço.
 
 - Som (síntese de corda no navegador), tema claro/escuro, cabeçalho fixo com título da aba, barra de abas embaixo no celular.
 

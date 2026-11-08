@@ -60,3 +60,14 @@ test('grau da blue note acompanha a grafia', () => {
   assert.equal(scaleDegreeLabels(10, 'Blues', false)[3], '#IV'); // Bb blues: E
   assert.equal(scaleDegreeLabels(0, 'Blues', false)[3], 'bV');   // C blues: Gb
 });
+
+test('modos: D dórica e G mixolídia usam as notas brancas; toda progressão tem estilo válido', async () => {
+  const { spelledScale, PROGRESSIONS, PROG_STYLES, harmonicField, scaleDegreeLabels } = await import('../music.js');
+  assert.deepEqual(spelledScale(2, 'Dórica', true), ['D', 'E', 'F', 'G', 'A', 'B', 'C']);
+  assert.deepEqual(spelledScale(7, 'Mixolídia', true), ['G', 'A', 'B', 'C', 'D', 'E', 'F']);
+  assert.deepEqual(spelledScale(4, 'Frígia', true), ['E', 'F', 'G', 'A', 'B', 'C', 'D']);
+  assert.equal(harmonicField(2, 'Dórica', true)[0].chord, 'Dm');
+  assert.equal(scaleDegreeLabels(5, 'Lídia', true)[3], '#IV');
+  const ok = new Set(PROG_STYLES.map(s => s[0]).filter(Boolean));
+  for (const pr of [...PROGRESSIONS.maior, ...PROGRESSIONS.menor]) assert.ok(pr.tags?.length && pr.tags.every(t => ok.has(t)), pr.name);
+});

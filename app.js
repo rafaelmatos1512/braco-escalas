@@ -1,4 +1,4 @@
-import { CHORD_ORDER, SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, noteName, noteAt, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, spellChordFromRoot, PROGRESSIONS, progressionChords, customChords, itemsFromChords,
+import { CHORD_ORDER, SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, noteName, noteAt, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, spellChordFromRoot, PROGRESSIONS, PROG_STYLES, progressionChords, customChords, itemsFromChords,
   scaleNotes, harmonicField } from './music.js';
 import { midiAt, playNote, strum, sequence, schedule, stopAll, soundOn, setSound } from './audio.js';
 import { STRINGS as TSTR, nearestString, centsToString, tuneStatus, startMic, stopMic, micOn } from './tuner.js';
@@ -10,7 +10,7 @@ const state = {
   frets2: 24, croot: 0, ctype: 'maior', cvoice: null,
   cf: { region: 'all', open: 'any', barre: 'any', bass: 'root', min: 4 },
   g: { root: 4, kind: 'pow', tri: 'maior', set: '5,4,3', ext: '7', pos: null, labels: 'notes' },
-  p: { key: 0, mode: 'maior', idx: 0, step: 0, pos: null, labels: 'notes', playing: false, src: 'ready', mine: 0, ed: null },
+  p: { key: 0, mode: 'maior', idx: 0, step: 0, pos: null, labels: 'notes', playing: false, src: 'ready', mine: 0, ed: null, style: '' },
 };
 let tabJump = false; // trocar de tela sempre começa do topo (a proteção de rolagem não segura)
 const NS = 'http://www.w3.org/2000/svg';
@@ -240,6 +240,24 @@ const jumpTo = id => { tabJump = true; $(id).scrollIntoView(); };
 
 // o tom e o modo ficam dentro do quadro de criar enquanto se monta a progressão
 const pTop = $('pTop'), pTopHome = $('pTopHome');
+// lista das progressões prontas, com filtro de estilo e busca (nome, explicação ou acordes)
+const fold = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[–-]/g, ' ').replace(/\s+/g, ' ').trim();
+function renderPList() {
+  const p = state.p, q = fold($('pSearch').value || '');
+  $('pStyles').innerHTML = PROG_STYLES.map(([k, t]) => `<button type="button" class="${(p.style || '') === k ? 'on' : ''}" data-k="${k}">${t}</button>`).join('');
+  $('pStyles').querySelectorAll('button').forEach(b => b.onclick = () => { p.style = b.dataset.k; renderPList(); });
+  const cards = PROGRESSIONS[p.mode].map((pr, i) => {
+    if (p.style && !(pr.tags || []).includes(p.style)) return '';
+    const ch = progressionChords(p.key, p.mode, pr, state.sharps), names = ch.map(c => c.name);
+    if (q && !fold([pr.name, pr.desc, ...names, ...ch.map(c => c.roman)].join(' ')).includes(q)) return '';
+    const seq = pr.chords.length > 6 ? names.slice(0, 12).join(' · ') : names.join(' – ');
+    return `<button type="button" class="pcard ${p.src === 'ready' && i === p.idx ? 'active' : ''}" data-i="${i}"><b>${pr.name}</b><span>${seq}</span></button>`;
+  }).join('');
+  $('pList').innerHTML = cards || '<p class="hint">Nenhuma progressão com essa busca. Troque o estilo para <b>Todas</b> ou apague o que digitou.</p>';
+  $('pList').querySelectorAll('.pcard').forEach(b => b.onclick = () => { stopProg(); p.src = 'ready'; p.idx = +b.dataset.i; p.step = 0; p.pos = null; renderProgressoes(); });
+}
+$('pSearch').addEventListener('input', () => renderPList());
+
 function renderProgressoes() {
   const p = state.p, ed = p.ed, list = PROGRESSIONS[p.mode];
   pTopHome.appendChild(pTop);
@@ -253,17 +271,12 @@ function renderProgressoes() {
   $('pEditor').hidden = !ed;
 
   // listas: prontas e as minhas
-  $('pList').innerHTML = list.map((pr, i) => {
-    const ch = progressionChords(p.key, p.mode, pr, state.sharps);
-    const seq = pr.chords.length > 6 ? ch.slice(0, 12).map(c => c.name).join(' · ') : ch.map(c => c.name).join(' – ');
-    return `<button type="button" class="pcard ${p.src === 'ready' && i === p.idx ? 'active' : ''}" data-i="${i}"><b>${pr.name}</b><span>${seq}</span></button>`;
-  }).join('');
-  $('pList').querySelectorAll('.pcard').forEach(b => b.onclick = () => { stopProg(); p.src = 'ready'; p.idx = +b.dataset.i; p.step = 0; p.pos = null; renderProgressoes(); });
-  $('pMine').innerHTML = myProgs.map((m, i) => {
+  renderPList();
+  $('pMine').innerHTML = '<button type="button" class="pcard new" id="pNew"><b>+ Criar a minha progressão</b><span>Com qualquer acorde, quantos quiser. Fica guardada neste aparelho.</span></button>' + myProgs.map((m, i) => {
     const ch = customChords(m.key, m.mode, m.items, state.sharps);
     return `<button type="button" class="pcard ${p.src === 'mine' && i === p.mine ? 'active' : ''}" data-i="${i}"><b>${esc(m.name)}</b>` +
       `<span>${ch.slice(0, 12).map(c => c.name).join(' – ')}${ch.length > 12 ? ' …' : ''} · ${ch.length} acorde${ch.length > 1 ? 's' : ''}</span></button>`;
-  }).join('') + '<button type="button" class="pcard new" id="pNew"><b>+ Criar uma progressão</b><span>Monte a sua com qualquer acorde, quantos quiser</span></button>';
+  }).join('');
   $('pMine').querySelectorAll('.pcard[data-i]').forEach(b => b.onclick = () => {
     stopProg(); const m = myProgs[+b.dataset.i];
     p.src = 'mine'; p.mine = +b.dataset.i; p.key = m.key; p.mode = m.mode; setSeg('pmode', m.mode); p.step = 0; p.pos = null; renderProgressoes();
@@ -280,7 +293,7 @@ function renderProgressoes() {
   let html = `<h2>${ed ? 'Montando: ' : ''}${esc(cur.name)} em ${keyName} ${p.mode}</h2>${cur.desc ? `<p>${cur.desc}</p>` : ''}`;
   if (!chords.length) html += '<p><b>Ainda não há acordes.</b> Escolha os acordes logo abaixo: cada um entra no fim da sequência, um ao lado do outro.</p>';
   else {
-    html += `<p class="hint">Os acordes em ordem, com o desenho de cada um. Toque num acorde para ouvir e ver onde ele fica no braço.</p>${seqCards(chords, p.step)}${outNote}`;
+    html += `${seqCards(chords, p.step)}${outNote}`;
     if (ed) html += `<div class="eact"><span>Acorde escolhido: <b>${p.step + 1}º — ${c.name}</b></span>` +
       '<button type="button" id="eLeft">← Mover</button><button type="button" id="eRight">Mover →</button>' +
       '<button type="button" id="eDup">Repetir</button><button type="button" id="eRm" class="danger">Tirar</button></div>';
@@ -293,7 +306,7 @@ function renderProgressoes() {
     html += '<p><button type="button" class="link" id="pEdit">Mudar esta progressão (pôr, tirar ou trocar acordes)</button> ' +
       `<button type="button" class="link danger" id="pDelMine">${armed ? 'Toque de novo para excluir de vez' : 'Excluir esta progressão'}</button></p>`;
   }
-  if (!cur.mine && !ed) html += '<p><button type="button" class="link" id="pCustom">Personalizar esta progressão (pôr, tirar ou trocar acordes)</button></p><p class="hint">A pronta continua igual. A sua versão fica guardada em <b>Minhas progressões</b>.</p>';
+  if (!cur.mine && !ed) html += '<p><button type="button" class="link" id="pCustom">Personalizar esta progressão (pôr, tirar ou trocar acordes)</button></p><p class="hint">A pronta continua igual. A sua versão fica guardada no alto da tela.</p>';
   $('pDetail').innerHTML = html;
 
   $('pDetail').querySelectorAll('.pc').forEach(b => b.onclick = () => {
@@ -315,7 +328,7 @@ function renderProgressoes() {
   };
   if ($('pCustom')) $('pCustom').onclick = () => {
     stopProg();
-    const items = itemsFromChords(p.key, chords).map((x, i) => { const f = voiceSlot(i).get(); return f ? { ...x, f, fk: p.key } : x; });
+    const items = itemsFromChords(p.key, chords, p.mode).map((x, i) => { const f = voiceSlot(i).get(); return f ? { ...x, f, fk: p.key } : x; });
     p.ed = { id: null, name: `${cur.name} (minha)`.slice(0, 40), items, root: p.key, msg: '', del: false }; p.step = 0; p.pos = null;
     renderProgressoes(); jumpTo('pDetail');
   };
@@ -335,7 +348,7 @@ function renderProgressoes() {
     $('pPosTitle').textContent = `Trocar a forma de ${c.name} (casas 0 a 24)`;
   $('pPosHint').innerHTML = v
     ? `<b>${c.name} agora usa a forma da ${v.minF > 0 ? 'casa ' + v.minF : 'posição aberta'}</b> nesta progressão, neste tom. Toque nela de novo para voltar à forma normal.`
-    : `Toque numa forma: ela passa a ser a usada no ${p.step + 1}º acorde, lá em cima na sequência, e fica guardada.`;
+    : `Toque numa forma: ela passa a ser a usada no ${p.step + 1}º acorde e a tela sobe até o braço para você ver onde fica. A escolha fica guardada.`;
   // região e "ver mais": a lista pode ter dezenas de formas
   const chordId = c.rootPc + ':' + c.type;
   if (p.posChord !== chordId) { p.posChord = chordId; p.posLimit = POS_PAGE; }
@@ -349,7 +362,7 @@ function renderProgressoes() {
     p.posRegion = b.dataset.r; p.posLimit = POS_PAGE; posHold();
   });
   if (v && !found.includes(v)) $('pPosHint').innerHTML += ' A forma escolhida fica em outra parte do braço: toque em <b>Todas</b> para vê-la.';
-  positionCards($('pPositions'), page, c.rootPc, shown, v ? page.indexOf(v) : null, i => { slot.set(i === null ? null : page[i].frets); posHold(); });
+  positionCards($('pPositions'), page, c.rootPc, shown, v ? page.indexOf(v) : null, i => { slot.set(i === null ? null : page[i].frets); posHold(); if (i !== null) { tabJump = true; $('board3').scrollIntoView({ behavior: 'smooth', block: 'center' }); } });
   $('pPosMore').innerHTML = (!found.length ? `<p>Nenhuma forma de ${c.name} nesta parte do braço. Escolha outra parte.</p>` : `<p class="hint">Mostrando ${page.length} de ${found.length} formas.</p>`) +
     (found.length > p.posLimit ? `<button type="button" class="link" id="pMoreF">Ver mais formas</button> ` : '') +
     (p.posLimit > POS_PAGE ? '<button type="button" class="link" id="pLessF">Ver menos</button>' : '');
@@ -377,7 +390,7 @@ function renderEditor(chords, keyName, scale) {
     '<div class="roots" id="eRoots"></div>' +
     `<div class="etypes">${byType.map((x, i) => `<button type="button" data-t="${types[i]}"><b>${x.name}</b><small>${CHORD_TYPES[types[i]].label}</small></button>`).join('')}</div>` +
     '<h3><b>4º</b> Confira a sequência</h3><p class="hint">Ela aparece lá em cima, na ordem da música. Toque num acorde para ouvir e para mover, repetir ou tirar.</p>' +
-    '<h3><b>5º</b> Guarde</h3><p class="hint">Depois de guardar, ela fica em <b>Minhas progressões</b>, para abrir quando quiser.</p>' +
+    '<h3><b>5º</b> Guarde</h3><p class="hint">Depois de guardar, ela fica no alto da tela, abaixo de <b>+ Criar</b>, para abrir quando quiser.</p>' +
     '<div class="dlg-actions"><button type="button" class="play" id="eSave">Guardar a progressão</button>' + cancelBtn +
     (ed.id ? `<button type="button" class="link danger" id="eDelAll">${delAllArmed ? 'Toque de novo para apagar de vez' : 'Apagar esta progressão'}</button>` : '') + '</div>';
   $('eTom').appendChild(pTop);
@@ -491,7 +504,7 @@ function renderCampos() {
       const on = sel && sel.scale === name && sel.idx === i;
       return `<button type="button" class="cell ${on ? 'on' : ''} ${i === 0 ? 'root' : ''}" data-i="${i}" data-s="${name}"><b>${c.chord}</b><small>${c.roman}</small></button>`;
     }).join('');
-    return `<div class="scard"><div class="name">${f[0].chord.replace(/m$/, '')} ${name}</div><div class="row">${cells}</div></div>`;
+    return `<div class="scard"><div class="name">${f[0].chord.replace(/[m°]$/, '')} ${name}</div><div class="row">${cells}</div></div>`;
   }).join('');
   document.querySelectorAll('#fieldCards .cell').forEach(c => c.onclick = () => {
     const name = c.dataset.s, i = +c.dataset.i;
@@ -506,7 +519,7 @@ function renderCampos() {
   document.body.classList.toggle('sheet-open', !!f && state.tab === 'campos');
   if (!f) { panel.innerHTML = '<p class="hint">Toque num acorde para ouvir e ver como tocar.</p>'; return; }
   const c = f[sel.idx];
-  panel.innerHTML = fieldDetail(c, f[0].chord.replace(/m$/, '') + ' ' + sel.scale);
+  panel.innerHTML = fieldDetail(c, f[0].chord.replace(/[m°]$/, '') + ' ' + sel.scale);
   $('fPlay').onclick = () => strumV(bestVoicing(c.notes[0], c.type));
   $('fMore').onclick = () => goChord(c.notes[0], c.type);
   $('fClose').onclick = () => { state.fsel = null; renderCampos(); };
@@ -573,10 +586,11 @@ function renderAcordes() {
     (v.barre ? '<span class="tag">pestana</span>' : '') + (v.hasOpen ? '<span class="tag">cordas soltas</span>' : '') + '</button>';
   const where = v => v.minF > 0 ? 'Casa ' + v.minF : 'Posição aberta';
 
-  $('cMore').innerHTML = (filtered.length > list.length ? '<button type="button" class="link" id="cMoreB">Ver mais formas</button> ' : '') +
-    (state.cLimit > SHOW_STEP ? '<button type="button" class="link" id="cLessB">Ver menos</button>' : '');
-  if ($('cMoreB')) $('cMoreB').onclick = () => { state.cLimit += SHOW_STEP; renderAcordes(); };
-  if ($('cLessB')) $('cLessB').onclick = () => { state.cLimit = SHOW_STEP; if (state.cvoice && +state.cvoice.slice(1) >= SHOW_STEP && state.cvoice[0] === 'v') state.cvoice = null; renderAcordes(); $('voicings').scrollIntoView(); tabJump = true; };
+  const moreHtml = (filtered.length > list.length ? '<button type="button" class="link cMoreB">Ver mais formas</button> ' : '') +
+    (state.cLimit > SHOW_STEP ? '<button type="button" class="link cLessB">Ver menos</button>' : '');
+  $('cMore').innerHTML = $('cMoreTop').innerHTML = moreHtml;
+  document.querySelectorAll('.cMoreB').forEach(b => b.onclick = () => { state.cLimit += SHOW_STEP; renderAcordes(); });
+  document.querySelectorAll('.cLessB').forEach(b => b.onclick = () => { state.cLimit = SHOW_STEP; if (state.cvoice && +state.cvoice.slice(1) >= SHOW_STEP && state.cvoice[0] === 'v') state.cvoice = null; renderAcordes(); $('voicings').scrollIntoView(); tabJump = true; });
   $('cagedWrap').hidden = !cg;
   $('caged').innerHTML = caged.map((v, i) => card(v, 'c' + i, `<b class="shape">Forma de ${v.shape}</b>`, where(v))).join('');
   $('voicings').innerHTML = list.map((v, i) =>

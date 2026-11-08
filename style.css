@@ -345,3 +345,12 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 .elive .link{display:block;padding:2px 0;margin-top:2px}
 /* tela baixa ou com muito zoom: a faixa não pode tapar os botões */
 @media (max-height:560px){ .elive{position:static} }
+/* Progressões: busca e estilo, ajuda dobrável */
+.pfind{display:grid;gap:8px;margin-bottom:10px}
+.pfind input{font:inherit;width:100%;padding:10px 12px;border-radius:10px;border:2px solid var(--border);background:var(--card);color:var(--fg)}
+.pfind input:focus{outline:none;border-color:var(--acc)}
+.mini-help{margin:6px 0}
+.mini-help summary{cursor:pointer;color:var(--mut);font-size:.92rem}
+#pMine{margin-bottom:6px}
+.h3row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.morebtns{margin-left:auto;display:flex;gap:10px}
