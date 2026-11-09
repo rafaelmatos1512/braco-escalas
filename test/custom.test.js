@@ -21,7 +21,7 @@ test('tom menor: graus da escala menor e acordes de fora', () => {
   const ch = customChords(9, 'menor', [it(0, 'menor'), it(5, 'menor'), it(7, '7'), it(8, 'maior'), it(3, 'maior'), it(10, 'maior')], true);
   assert.deepEqual(ch.map(c => c.name), ['Am', 'Dm', 'E7', 'F', 'C', 'G']);
   assert.deepEqual(ch.map(c => c.roman), ['i', 'iv', 'V7', 'VI', 'III', 'VII']);
-  assert.equal(ch[2].inField, false); // E7 tem G#, que não está na escala menor natural
+  assert.equal(ch[2].inField, true); // E7 tem G#, a sensível do tom menor (menor harmônica): é do tom
 });
 
 test('qualquer tipo em qualquer distância e tom: notas certas e grafia com letras seguidas', () => {
@@ -64,5 +64,5 @@ test('com tensão mantém o grau escrito e o "dentro do campo" do acorde origina
   const ten = tensionChords(0, 'maior', mine, true);
   assert.equal(ten[0].name, 'Gbmaj7');
   assert.equal(ten[1].name, 'Em9');
-  assert.equal(ten[1].inField, true);
+  assert.equal(ten[1].inField, false); // Em9 em C tem F#: a nota a mais sai do tom
 });

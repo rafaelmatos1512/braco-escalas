@@ -29,6 +29,10 @@ export function scaleNotes(root, name) {
 }
 
 const LABELS = {
+  'Menor': ['I','II','bIII','IV','V','bVI','bVII'],
+  'Menor Harmônica': ['I','II','bIII','IV','V','bVI','VII'],
+  'Maior Harmônica': ['I','II','III','IV','V','bVI','VII'],
+  'Menor Melódica': ['I','II','bIII','IV','V','VI','VII'],
   'Pentatônica Maior': ['I','II','III','V','VI'],
   'Pentatônica Menor': ['I','bIII','IV','V','bVII'],
   'Blues': ['I','bIII','IV','bV','V','bVII'],
@@ -41,6 +45,7 @@ const LABELS = {
 export const degreeLabels = name => LABELS[name] || ['I','II','III','IV','V','VI','VII'];
 
 const ROMAN = ['I','II','III','IV','V','VI','VII'];
+const MAJOR_PC = [0, 2, 4, 5, 7, 9, 11];
 
 /* ---------- grafia correta (cada escala usa cada letra uma vez) ---------- */
 const LETTERS = ['C','D','E','F','G','A','B'];
@@ -128,10 +133,12 @@ export function harmonicField(root, name, useSharps) {
   return n.map((r, i) => {
     const third = (n[(i + 2) % 7] - r + 12) % 12;
     const fifth = (n[(i + 4) % 7] - r + 12) % 12;
-    let suffix = '', roman = ROMAN[i];
+    // grau com b/# em relação à escala maior (bIII, #IV…), como nas progressões
+    const acc = ((r - root - MAJOR_PC[i] + 18) % 12) - 6;
+    let suffix = '', roman = (acc < 0 ? 'b' : acc > 0 ? '#' : '') + ROMAN[i];
     if (third === 3 && fifth === 7) { suffix = 'm'; roman = roman.toLowerCase(); }
-    else if (third === 3 && fifth === 6) { suffix = '°'; roman = roman.toLowerCase(); }
-    else if (third === 4 && fifth === 8) { suffix = '+'; }
+    else if (third === 3 && fifth === 6) { suffix = '°'; roman = roman.toLowerCase() + '°'; }
+    else if (third === 4 && fifth === 8) { suffix = '+'; roman += '+'; }
     const type = suffix === 'm' ? 'menor' : suffix === '°' ? 'dim' : suffix === '+' ? 'aug' : 'maior';
     return { chord: sp[i] + suffix, type, roman, notes: [r, n[(i + 2) % 7], n[(i + 4) % 7]] };
   });
@@ -139,7 +146,7 @@ export function harmonicField(root, name, useSharps) {
 
 // campo harmônico com sétima (tétrades): Imaj7, ii7, iii7, IVmaj7, V7, vi7, viiø na escala maior
 const SEVENTH = { 'maior:11': ['maj7', 'maj7'], 'maior:10': ['7', '7'], 'menor:10': ['m7', '7'], 'menor:11': ['mmaj7', '(maj7)'],
-  'dim:10': ['m7b5', 'ø'], 'dim:9': ['dim7', '°7'] };
+  'dim:10': ['m7b5', 'ø'], 'dim:9': ['dim7', '°7'], 'aug:11': ['maj7#5', 'maj7(#5)'] };
 export function harmonicField7(root, name, useSharps) {
   const f = harmonicField(root, name, useSharps);
   if (!f) return null;
@@ -149,7 +156,7 @@ export function harmonicField7(root, name, useSharps) {
     const rn = c.chord.replace(/[m°+]$/, '');
     if (!hit) return { ...c, rn };
     const [type, rs] = hit, t = CHORD_TYPES[type];
-    return { chord: rn + t.suffix, rn, type, roman: c.roman.replace(/°$/, '') + rs, notes: t.iv.map(x => (n[i] + x) % 12) };
+    return { chord: rn + t.suffix, rn, type, roman: c.roman.replace(/[°+]$/, '') + rs, notes: t.iv.map(x => (n[i] + x) % 12) };
   });
 }
 
@@ -181,6 +188,8 @@ export const CHORD_TYPES = {
     desc: 'Acorde maior com uma nota a mais. Soa doce e estável. Comum no samba e na bossa nova.' },
   '9': { label: 'Com nona (9)', suffix: '9', iv: [0,4,7,10,2],
     desc: 'Acorde com 7 e uma nota extra. Soa rico e cheio de personalidade, comum no blues e no funk.' },
+  'maj7#5': { label: 'Sétima maior com quinta aumentada (maj7(#5))', suffix: 'maj7(#5)', iv: [0,4,8,11], ivNames: ['1','3','#5','7'],
+    desc: 'Acorde aumentado com a sétima maior. Soa misterioso e brilhante. Nasce no 3º grau das escalas menor harmônica e menor melódica.' },
   m7b5: { label: 'Meio-diminuto (m7b5)', suffix: 'm7(b5)', iv: [0,3,6,10],
     desc: 'Também chamado de meio-diminuto (ø). Soa tenso e melancólico. Aparece no ii–V–i do tom menor, no jazz e na bossa nova.' },
   '5': { label: 'Power chord (5)', suffix: '5', iv: [0,7],
@@ -203,7 +212,7 @@ export const CHORD_TYPES = {
     desc: 'Acorde com 7 e uma nota bem aguda por cima. Soa rico e cheio de balanço, comum no blues, no samba e no jazz.' },
   '7b9': { label: 'Sétima com nona menor (7b9)', suffix: '7(b9)', iv: [0,4,7,10,1], letters: [0,2,4,6,1],
     desc: 'Acorde com 7 e uma nota bem tensa. Pede muito para resolver no acorde seguinte, comum no choro e no jazz.' },
-  '6/9': { label: 'Sexta com nona (6/9)', suffix: '6/9', iv: [0,4,9,2],
+  '6/9': { label: 'Sexta com nona (6/9)', suffix: '6/9', iv: [0,4,7,9,2],
     desc: 'Acorde maior com a sexta e a nona. Soa suave e "final", muito usado para terminar músicas na bossa nova e no jazz.' },
   mmaj7: { label: 'Menor com sétima maior (m(maj7))', suffix: 'm(maj7)', iv: [0,3,7,11],
     desc: 'Acorde menor com a sétima maior. Soa misterioso, de filme de suspense. Aparece na bossa nova e no tango, muitas vezes entre o menor e o m7.' },
@@ -216,7 +225,7 @@ export const CHORD_TYPES = {
   '7b5': { label: 'Sétima com quinta diminuta (7(b5))', suffix: '7(b5)', iv: [0,4,6,10],
     desc: 'Acorde com 7 e a quinta abaixada. Soa tenso e diferente, aparece no jazz e na bossa nova antes de voltar ao acorde de repouso.' },
   '7#5': { label: 'Sétima com quinta aumentada (7(#5))', suffix: '7(#5)', iv: [0,4,8,10], ivNames: ['1','3','#5','b7'],
-    desc: 'Acorde com 7 e a quinta subida. Também chamado de 7+. Soa tenso e "puxando" para o próximo acorde, comum no choro e no samba.' },
+    desc: 'Acorde com 7 e a quinta subida. Em cifras de outros países aparece como 7+, mas no Brasil "7+" quase sempre quer dizer sétima maior (7M). Soa tenso e "puxando" para o próximo acorde, comum no choro e no samba.' },
   '7b13': { label: 'Sétima com décima terceira menor (7(b13))', suffix: '7(b13)', iv: [0,4,7,10,8], letters: [0,2,4,6,5], ivNames: ['1','3','5','b7','b13'],
     desc: 'Acorde com 7 e uma nota tensa por cima. Muito usado antes de um acorde menor, no samba, no choro e na bossa nova.' },
   '7#11': { label: 'Sétima com décima primeira aumentada (7(#11))', suffix: '7(#11)', iv: [0,4,7,10,6], letters: [0,2,4,6,3], ivNames: ['1','3','5','b7','#11'],
@@ -225,7 +234,7 @@ export const CHORD_TYPES = {
     desc: 'Sétima maior com uma nota brilhante por cima. Soa sonhador e moderno, muito usado na bossa nova e em trilhas.' },
 };
 // ordem de mostrar: dos mais comuns aos mais raros (o JavaScript põe chaves como '7' antes das outras no objeto)
-export const CHORD_ORDER = ['maior', 'menor', '7', 'm7', 'maj7', '6', 'm6', '9', 'm9', 'maj9', '13', 'add9', 'madd9', '6/9', 'mmaj7', 'm11', 'sus2', 'sus4', '7sus4', '9sus4', 'dim', 'dim7', 'aug', 'm7b5', '7b5', '7#5', '7b9', '7#9', '7b13', '7#11', 'maj7#11', '5'];
+export const CHORD_ORDER = ['maior', 'menor', '7', 'm7', 'maj7', '6', 'm6', '9', 'm9', 'maj9', '13', 'add9', 'madd9', '6/9', 'mmaj7', 'm11', 'sus2', 'sus4', '7sus4', '9sus4', 'dim', 'dim7', 'aug', 'maj7#5', 'm7b5', '7b5', '7#5', '7b9', '7#9', '7b13', '7#11', 'maj7#11', '5'];
 const INTERVAL_NAME = { 0: '1', 1: 'b9', 2: '9', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5', 8: '#5', 9: '6', 10: 'b7', 11: '7' };
 export const intervalNames = t => t.ivNames || t.iv.map(i => INTERVAL_NAME[i % 12]);
 
@@ -351,12 +360,12 @@ export const PROG_STYLES = [['', 'Todas'], ['pop', 'Pop'], ['rock', 'Rock'], ['l
 // monta os acordes de uma progressão num tom
 export function progressionChords(key, mode, prog, useSharps) {
   const scale = mode === 'maior' ? 'Maior' : 'Menor';
-  const notes = scaleNotes(key, scale);
+  const notes = scaleNotes(key, scale), inKey = keyNotes(key, mode);
   return prog.chords.map(([deg, alt, type, roman]) => {
     const t = CHORD_TYPES[type], rootName = spellDegree(key, scale, deg, alt, useSharps);
     const rootPc = (notes[deg] + alt + 12) % 12;
     return { roman, type, rootPc, rootName, name: rootName + t.suffix, da: [deg, alt],
-      names: spellChordFromRoot(rootName, t.iv, t.letters), pcs: t.iv.map(i => (rootPc + i) % 12) };
+      names: spellChordFromRoot(rootName, t.iv, t.letters), pcs: t.iv.map(i => (rootPc + i) % 12), inField: t.iv.every(i => inKey.has((rootPc + i) % 12)) };
   });
 }
 
@@ -377,12 +386,16 @@ export const itemsFromChords = (key, chords, mode = 'maior') => chords.map(c => 
   return it;
 });
 
+// notas do tom: no menor vale também a sensível (7ª subida, da menor harmônica), que faz o V7 e o vii°7
+export const keyNotes = (key, mode) => new Set([...scaleNotes(key, mode === 'maior' ? 'Maior' : 'Menor'), ...(mode === 'menor' ? [(key + 11) % 12] : [])]);
+// diminutos de passagem sobem para o grau seguinte: C#°7 (#I°7) em C, e não Db°7
+const DIM_UP = { 1: [0, 1], 3: [1, 1], 8: [4, 1] };
 export function customChords(key, mode, items, useSharps) {
-  const scale = mode === 'maior' ? 'Maior' : 'Menor', inKey = new Set(scaleNotes(key, scale));
+  const scale = mode === 'maior' ? 'Maior' : 'Menor', inKey = keyNotes(key, mode);
   const sn = scaleNotes(key, scale);
   return items.map(({ o, t: type, d }) => {
     const okD = d && (sn[d[0]] + d[1] - key + 24) % 12 === o; // o grau guardado só vale se cair na mesma nota
-    const t = CHORD_TYPES[type], [deg, alt] = okD ? d : DEG_OF[mode][o];
+    const t = CHORD_TYPES[type], [deg, alt] = okD ? d : mode === 'maior' && (type === 'dim' || type === 'dim7') && DIM_UP[o] ? DIM_UP[o] : DEG_OF[mode][o];
     const rootName = spellDegree(key, scale, deg, alt, useSharps), rootPc = (key + o) % 12;
     const pcs = t.iv.map(i => (rootPc + i) % 12);
     const num = LOWER.has(type) ? ROMAN[deg].toLowerCase() : ROMAN[deg];
@@ -395,13 +408,20 @@ export function customChords(key, mode, items, useSharps) {
 // "com tensão": troca cada acorde por uma versão mais rica, como no jazz e na bossa
 // o V (5º grau, 7 semitons acima do tom) é dominante: vira 9; os outros maiores viram maj7
 const TENSION = { menor: 'm7', '7': '9', m7: 'm9', maj7: 'maj9', dim: 'm7b5', sus4: '7sus4', '6': '6/9' };
-export function tensionType(type, o) {
+export function tensionType(type, o, mode = 'maior') {
+  if (mode === 'menor') {
+    // tom menor: o V pede a nona menor (b9, da menor harmônica); o VII (subtônica) tem sétima menor
+    if (o === 7 && (type === 'maior' || type === '5' || type === '7')) return '7b9';
+    if (o === 10 && (type === 'maior' || type === '5')) return '7';
+  }
   if (type === 'maior' || type === '5') return o === 7 ? '9' : 'maj7';
   return TENSION[type] || type;
 }
 export function tensionChords(key, mode, chords, useSharps) {
   return chords.map(c => {
-    const o = (c.rootPc - key + 12) % 12, t = tensionType(c.type, o);
-    return t === c.type ? c : { ...customChords(key, mode, [{ o, t, d: c.da }], useSharps)[0], inField: c.inField }; // "de fora do campo" segue o acorde original
+    const o = (c.rootPc - key + 12) % 12, t = tensionType(c.type, o, mode);
+    if (t === c.type) return c;
+    const n = customChords(key, mode, [{ o, t, d: c.da }], useSharps)[0];
+    return { ...n, inField: c.inField !== false && n.inField }; // de fora se o original era de fora ou se a nota a mais sai do tom
   });
 }

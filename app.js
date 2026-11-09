@@ -50,7 +50,7 @@ function drawRow(host, from, to, o) {
   }
   for (let row = 0; row < 6; row++) {
     const s = 5 - row, y = TOP + row * SG;
-    el('line', { x1: from === 1 ? LEFT - 30 : LEFT, x2: LEFT + n * FW, y1: y, y2: y, stroke: 'var(--string)', 'stroke-width': 1 + s * 0.4 }, svg);
+    el('line', { x1: from === 1 ? LEFT - 30 : LEFT, x2: LEFT + n * FW, y1: y, y2: y, stroke: 'var(--string)', 'stroke-width': 1 + (5 - s) * 0.4 }, svg);
     if (o.exact && from === 1 && o.exact[s] < 0)
       el('text', { x: LEFT - 28, y: y + 6, 'text-anchor': 'middle', fill: 'var(--mute-x)', 'font-size': 20, 'font-weight': 700 }, svg).textContent = '×';
     for (let f = from === 1 ? 0 : from; f <= to; f++) {
@@ -220,10 +220,13 @@ const triadsOf = (rootPc, iv) => {
   if (new Set(core.map(i => i % 12)).size < 3) return powerChords(rootPc);
   return TRI_SETS.flatMap(st => stringSetTriads(rootPc, core, st)).sort((a, b) => a.minF - b.minF || a.maxF - b.maxF);
 };
+// power chord só serve em acorde com quinta justa; diminuto e aumentado ficam como tríade (B5 no lugar de B° tocaria F#, fora do tom)
+const powOk = type => CHORD_TYPES[type].iv.includes(7);
 const chordPositions = c => {
   const kind = state.p.kind || 'normal', k = kind + ':' + c.rootPc + ':' + c.type;
   return posMemo[k] || (posMemo[k] =
-    kind === 'pow' || c.type === '5' ? powerChords(c.rootPc) // power chord usa só 2 ou 3 cordas: o gerador comum não acha
+    (kind === 'pow' && powOk(c.type)) || c.type === '5' ? powerChords(c.rootPc)
+    : kind === 'pow' ? triadsOf(c.rootPc, CHORD_TYPES[c.type].iv) // power chord usa só 2 ou 3 cordas: o gerador comum não acha
     : kind === 'tri' ? triadsOf(c.rootPc, CHORD_TYPES[c.type].iv)
     : allPositions(c.rootPc, c.type, CHORD_TYPES[c.type].iv));
 };
@@ -345,8 +348,8 @@ function renderProgressoes() {
       const kind = p.kind || 'normal';
       html += '<div class="roots preg"><b>Desenho:</b> ' + [['normal', 'Normal'], ...(ed ? [] : [['ten', 'Com tensão (jazz)']]), ['pow', 'Power chord (rock)'], ['tri', 'Tríade (3 cordas)']]
         .map(([k, l]) => `<button type="button" data-kind="${k}" class="${k === kind ? 'on' : ''}">${l}</button>`).join('') + '</div>' +
-        (kind === 'ten' ? '<p class="hint">Com tensão: cada acorde ganha notas a mais (7ª, 9ª), o som rico do jazz e da bossa. Em C maior, o C vira Cmaj7, o Am vira Am7 e o G (5º acorde do tom) vira G9. Os outros maiores viram maj7.</p>'
-          : kind === 'pow' ? '<p class="hint">Power chord: só a nota base e a quinta. Não é maior nem menor, por isso serve para todos os acordes. Som forte do rock.</p>'
+        (kind === 'ten' ? '<p class="hint">Com tensão: cada acorde ganha notas a mais (7ª, 9ª), o som rico do jazz e da bossa. Em C maior, o C vira Cmaj7, o Am vira Am7 e o G (5º acorde do tom) vira G9. Os outros maiores viram maj7. No tom menor, o 5º acorde vira 7(b9) e o 7º vira 7, para não sair do tom.</p>'
+          : kind === 'pow' ? '<p class="hint">Power chord: só a nota base e a quinta. Não é maior nem menor, por isso serve para os acordes maiores e menores. Som forte do rock. Diminutos e aumentados não têm essa quinta: ficam como tríade.</p>'
           : kind === 'tri' ? '<p class="hint">Tríade: o acorde em só 3 cordas, som leve. Acordes com sétima ou nona ficam só com as 3 notas principais.</p>' : '');
       html += '<div class="roots preg"><b>Tocar tudo em:</b> ' + [['', 'Normal'], ['1', 'Início (1–4)'], ['2', 'Meio (5–8)'], ['3', 'Agudo (9–12)'], ['4', 'Mais agudo (13+)']]
         .map(([k, l]) => `<button type="button" data-ar="${k}" class="${k === cur ? 'on' : ''}">${l}</button>`).join('') +
@@ -579,8 +582,8 @@ function renderCampos() {
       .map(([k, l]) => `<button type="button" data-fk="${k}" class="${k === fk ? 'on' : ''}">${l}</button>`).join('') + '</div>' +
     '<div class="roots preg"><b>Tocar tudo em:</b> ' + [['', 'Normal'], ['1', 'Início (1–4)'], ['2', 'Meio (5–8)'], ['3', 'Agudo (9–12)'], ['4', 'Mais agudo (13+)']]
       .map(([k, l]) => `<button type="button" data-fr="${k}" class="${k === fr ? 'on' : ''}">${l}</button>`).join('') + '</div>' +
-    (fk === 'ten' ? '<p class="hint">Com tensão: cada acorde ganha a sétima, como no jazz e na bossa (Cmaj7, Dm7, G7…).</p>'
-      : fk === 'pow' ? '<p class="hint">Power chord: só a nota base e a quinta, o som forte do rock.</p>'
+    (fk === 'ten' ? '<p class="hint">Com tensão: cada acorde ganha a sétima (vira tétrade, acorde de 4 notas), como no jazz e na bossa (Cmaj7, Dm7, G7…).</p>'
+      : fk === 'pow' ? '<p class="hint">Power chord: só a nota base e a quinta, o som forte do rock. Diminutos e aumentados não têm essa quinta, por isso ficam como tríade.</p>'
       : fk === 'tri' ? '<p class="hint">Tríade: o acorde em só 3 cordas, som leve.</p>' : '');
   $('fOpts').querySelectorAll('[data-fk]').forEach(b => b.onclick = () => { state.fkind = b.dataset.fk; renderCampos(); });
   $('fOpts').querySelectorAll('[data-fr]').forEach(b => b.onclick = () => { state.freg = b.dataset.fr; renderCampos(); });
@@ -662,7 +665,7 @@ function fieldRow(f, idx, name) {
 const fieldShapes = f => {
   const r = f.notes[0], k = state.fkind || 'normal';
   // braço inteiro (até a casa 24): a mais fácil primeiro, depois uma de cada região, subindo
-  let list = k === 'pow' ? powerChords(r) : k === 'tri' ? triadsOf(r, CHORD_TYPES[f.type].iv) : allPositions(r, f.type, CHORD_TYPES[f.type].iv);
+  let list = k === 'pow' && powOk(f.type) ? powerChords(r) : k === 'pow' ? triadsOf(r, CHORD_TYPES[f.type].iv) : k === 'tri' ? triadsOf(r, CHORD_TYPES[f.type].iv) : allPositions(r, f.type, CHORD_TYPES[f.type].iv);
   if (state.freg) list = filterVoicings(list, { region: state.freg, open: 'any', barre: 'any', bass: 'any', min: 0 });
   else if (k === 'normal' || k === 'ten') { const easy = voicingsOf(r, f.type).find(v => v.bassIsRoot); list = [easy, ...list.filter(v => v !== easy && (!easy || v.frets.join() !== easy.frets.join())).sort((a, b) => a.minF - b.minF)].filter(Boolean); }
   const out = list.slice(0, state.fmore ? 24 : 8); out.total = list.length; return out;
