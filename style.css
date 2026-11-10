@@ -167,7 +167,7 @@ ol.str{padding-left:1.2rem;margin:6px 0}
   .font button{min-width:33px;height:36px;padding:0 4px;font-size:15px}
   .font button svg{width:18px;height:18px}
   .brand{gap:8px}
-  nav#tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(6,1fr);gap:0;
+  nav#tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(7,1fr);gap:0;
     padding:4px 2px calc(4px + env(safe-area-inset-bottom));background:var(--navbg);border-top:1px solid var(--line);
     -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
   nav#tabs button{flex-direction:column;gap:2px;padding:6px 0;font-size:.66rem;border-bottom:0;border-radius:10px;letter-spacing:-.01em;min-width:0}
@@ -436,3 +436,27 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 #fboard svg{width:100%;min-width:720px;display:block}
 /* o campo aberto fica no meio da página: nunca preso na tela (era isso que fazia a tela subir) */
 #fieldCards .fpanel.frow{position:relative;top:auto;left:auto;right:auto;bottom:auto;z-index:auto;max-height:none;overflow:visible;padding:12px 14px}
+
+/* aba Base (backing track) */
+.bseq{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin:10px 0}
+.bchip{border:2px solid var(--border);background:var(--card);color:var(--fg);border-radius:12px;padding:10px 6px;text-align:center;min-height:72px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.bchip b{font-size:1.25rem}
+.bchip small{color:var(--mut);font-size:.8rem}
+.bchip.on{border-color:var(--acc);background:var(--acc-bg)}
+.bchip.out{border-style:dashed}
+.bbeats{display:flex;gap:8px;justify-content:center;margin:6px 0 2px}
+.bbeats i{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:transparent}
+.bbeats i.on{background:var(--acc);border-color:var(--acc)}
+.bnow{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.bnow .big{font-size:1.6rem;font-weight:700}
+.bcols{display:grid;grid-template-columns:1fr;gap:4px;justify-items:center}
+.bleft{width:100%}
+.bleft{min-width:0}
+.bvis{display:grid;grid-template-columns:repeat(2,120px);gap:10px;align-items:start;justify-items:center;margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.bvis small{display:block;color:var(--mut);text-align:center;font-size:.8rem}
+.bvis b{display:block;text-align:center;font-size:1.1rem}
+.bvis svg{width:104px;height:auto;display:block;margin:0 auto}
+.bvis .nx{opacity:.65}
+#bPlayer .board-wrap{margin-top:8px;overflow-x:auto;width:100%}
+.bstep span{display:inline-flex;align-items:center;padding:0 10px;min-width:150px;justify-content:center}
+.bstep button{min-width:64px}

@@ -101,3 +101,45 @@ export function stopAll() {
   playing.forEach(s => { try { s.stop(); } catch {} }); playing.clear();
 }
 export const isScheduled = () => timers.size > 0;
+
+// relógio do áudio (segundos), para agendar com precisão; null se o navegador não tem Web Audio
+export const clock = () => { const c = audio(); return c ? c.currentTime : null; };
+
+/* ---------- bateria sintetizada (sem arquivos de áudio) ---------- */
+let noiseBuf = null;
+function noise() {
+  if (!noiseBuf) {
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return noiseBuf;
+}
+// toca uma peça da bateria: 'kick' | 'snare' | 'hat' | 'ohat' | 'rim' | 'ride'
+export function drum(kind, delay = 0, vol = 1) {
+  if (!enabled || !audio()) return;
+  const t = ctx.currentTime + delay;
+  const track = n => { playing.add(n); n.onended = () => playing.delete(n); return n; };
+  const env = (peak, dur) => {
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(peak * vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    g.connect(master); return g;
+  };
+  const tone = (type, f0, f1, peak, dur) => {
+    const o = track(ctx.createOscillator()); o.type = type;
+    o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.5);
+    o.connect(env(peak, dur)); o.start(t); o.stop(t + dur + 0.02);
+  };
+  const hiss = (filter, freq, peak, dur) => {
+    const s = track(ctx.createBufferSource()); s.buffer = noise();
+    const f = ctx.createBiquadFilter(); f.type = filter; f.frequency.value = freq;
+    s.connect(f); f.connect(env(peak, dur)); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+  };
+  if (kind === 'kick') tone('sine', 150, 45, 0.9, 0.32);
+  else if (kind === 'snare') { hiss('highpass', 1200, 0.45, 0.18); tone('triangle', 200, 140, 0.35, 0.1); }
+  else if (kind === 'rim') { hiss('bandpass', 2200, 0.5, 0.04); tone('square', 900, 0, 0.12, 0.03); }
+  else if (kind === 'ohat') hiss('highpass', 7000, 0.22, 0.28);
+  else if (kind === 'ride') hiss('highpass', 5500, 0.18, 0.2);
+  else hiss('highpass', 8000, 0.2, 0.05); // hat fechado
+}
