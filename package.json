@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start": "python3 serve.py",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js && python3 -m unittest discover -s test -p 'test_*.py'"
   },
   "engines": { "node": ">=18" }
 }

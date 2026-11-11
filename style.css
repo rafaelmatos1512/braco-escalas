@@ -256,11 +256,14 @@ details > summary:hover::after{border-color:var(--acc)}
 /* botão de ajuda e popup */
 .font button.help{background:var(--acc);color:#1a1205;border-color:var(--acc)}
 .font button.help svg{stroke-width:2.2}
+dialog#contaDlg{width:min(92vw,440px);border:2px solid var(--acc);border-radius:18px;padding:20px 20px 16px;background:var(--card);color:var(--fg);box-shadow:0 20px 60px #000a}
+dialog#contaDlg::backdrop{background:rgba(0,0,0,.55)}
+dialog#contaDlg h2{margin:0 40px 8px 0;font-size:1.4rem}
 dialog#helpDlg{width:min(92vw,460px);border:2px solid var(--acc);border-radius:18px;padding:20px 20px 16px;background:var(--card);color:var(--fg);box-shadow:0 20px 60px #000a}
 dialog#helpDlg::backdrop{background:rgba(0,0,0,.55)}
 dialog#helpDlg h2{margin:0 40px 8px 0;font-size:1.4rem}
 dialog#helpDlg p{margin:8px 0}
-dialog#helpDlg .close{position:absolute;top:12px;right:12px;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--inner);color:var(--fg);font-size:1.1rem;cursor:pointer}
+dialog#contaDlg .close,dialog#helpDlg .close{position:absolute;top:12px;right:12px;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--inner);color:var(--fg);font-size:1.1rem;cursor:pointer}
 dialog#helpDlg .small{color:var(--mut);font-size:.85rem}
 .dlg-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px}
 #helpInput,#learnSearch{width:100%;font:inherit;font-size:1.05rem;padding:12px 14px;border-radius:12px;border:2px solid var(--border);background:var(--inner);color:var(--fg)}
@@ -460,3 +463,18 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 #bPlayer .board-wrap{margin-top:8px;overflow-x:auto;width:100%}
 .bstep span{display:inline-flex;align-items:center;padding:0 10px;min-width:150px;justify-content:center}
 .bstep button{min-width:64px}
+
+/* conta */
+.cform{display:grid;gap:10px;margin:8px 0}
+.cform label{display:grid;gap:4px;font-weight:600}
+.cform input{font:inherit;padding:10px 12px;border-radius:10px;border:2px solid var(--border);background:var(--inner);color:var(--fg)}
+.cerr{color:var(--danger,#f87171);font-weight:600}
+.cok{color:var(--acc);font-weight:600}
+#contaBtn.on svg{stroke:var(--acc)}
+/* minhas gravações */
+.rxbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.rxbar input[type=search]{flex:1 1 220px;font:inherit;padding:10px 12px;border-radius:10px;border:2px solid var(--border);background:var(--inner);color:var(--fg)}
+#rxAudio{width:100%;margin:8px 0}
+.rxform{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0}
+.rxform label{display:grid;gap:4px;font-weight:600;font-size:.9rem}
+.rxform input{font:inherit;padding:8px 10px;border-radius:10px;border:2px solid var(--border);background:var(--inner);color:var(--fg)}

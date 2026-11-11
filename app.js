@@ -3,6 +3,7 @@ import { CHORD_ORDER, SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, n
 import { midiAt, playNote, strum, sequence, schedule, stopAll, soundOn, setSound } from './audio.js';
 import { STRINGS as TSTR, nearestString, centsToString, tuneStatus, startMic, stopMic, micOn } from './tuner.js';
 import { createPlayer, GROOVES, GROOVE_ORDER, GROOVE_OF } from './backing.js';
+import * as api from './api.js';
 import { shapeOf, generateVoicings, filterVoicings, cagedShapes, hasCaged, neckPositions, allPositions, findVoicing, powerChords, stringSetTriads } from './chords.js';
 
 const $ = id => document.getElementById(id);
@@ -181,7 +182,8 @@ const validProg = m => m && typeof m.name === 'string' && Number.isInteger(m.key
   Array.isArray(m.items) && m.items.every(x => x && Number.isInteger(x.o) && x.o >= 0 && x.o < 12 && x.t in CHORD_TYPES);
 let myProgs = [];
 try { const v = JSON.parse(localStorage.getItem(MY_KEY) || '[]'); if (Array.isArray(v)) myProgs = v.filter(validProg); } catch {}
-const saveMine = () => { try { localStorage.setItem(MY_KEY, JSON.stringify(myProgs)); return true; } catch { return false; } };
+// com conta, a lista também vai para o servidor (syncMine); `local` = só este aparelho
+const saveMine = local => { if (!local) syncMine(); try { localStorage.setItem(MY_KEY, JSON.stringify(myProgs)); return true; } catch { return false; } };
 const esc = x => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const setSeg = (id, v) => { $(id).value = v; document.querySelectorAll(`#${id} + .seg button`).forEach(b => b.classList.toggle('on', b.dataset.v === v)); };
 const STOP_BTN = '<button type="button" class="play stop" id="pPlay"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg><span>Parar</span></button>';
@@ -585,7 +587,13 @@ function paintBeat(info) {
 // mudou o tom, a progressão ou o andamento: se estava tocando, recomeça já com o novo
 const baseChanged = () => { const was = state.b.playing; if (was) startBase(); else renderBase(); };
 function renderBase() {
-  const b = state.b, { name, chords } = baseChords();
+  const b = state.b;
+  // duas fontes: a base do próprio app (sintetizada) ou as gravações que você guardou
+  $('bSrc').innerHTML = [['app', 'Base do app'], ['rec', 'Minhas gravações']].map(([k, l]) => `<button type="button" data-src="${k}" class="${(b.fonte || 'app') === k ? 'on' : ''}">${l}</button>`).join('');
+  $('bSrc').querySelectorAll('button').forEach(x => x.onclick = () => { b.fonte = x.dataset.src; if (b.fonte === 'rec') stopBase(); else pararGravacao(); renderBase(); });
+  $('bSynth').hidden = b.fonte === 'rec'; $('bRec').hidden = b.fonte !== 'rec';
+  if (b.fonte === 'rec') { renderRec(); return; }
+  const { name, chords } = baseChords();
   const keyName = spelledScale(b.key, b.mode === 'maior' ? 'Maior' : 'Menor', state.sharps)[0];
   rootButtons($('bKeys'), b.key, k => { b.key = k; b.link = null; baseChanged(); });
   const seg = (arr, cur, attr) => arr.map(([v, l]) => `<button type="button" data-${attr}="${v}" class="${String(v) === String(cur) ? 'on' : ''}">${l}</button>`).join('');
@@ -639,6 +647,163 @@ function renderBase() {
   const bind = (attr, fn) => $('bOpts').querySelectorAll(`[data-${attr}]`).forEach(x => x.onclick = () => { fn(x.dataset[attr]); baseChanged(); });
   bind('bpm', v => { b.bpm = +v; }); bind('bpmd', v => { b.bpm = Math.max(40, Math.min(200, b.bpm + +v)); }); bind('gr', v => { b.groove = v; b.bpm = GROOVES[v].bpm; }); bind('mx', v => { b.mix = { ...b.mix, [v]: !b.mix[v] }; }); bind('bars', v => { b.bars = +v; }); bind('hide', v => { b.hide = v === '1'; });
 }
+
+
+/* ---------- CONTA (login) e MINHAS GRAVAÇÕES (faixas guardadas no servidor do app) ---------- */
+const conta = { usuario: null, cadastro: false, login: false, pronto: false, msg: '', err: false, senha: false };
+state.rx = { ritmo: '', q: '', sel: null, faixas: [], ritmos: [], carregou: false, carregando: false, msg: '', err: false, edit: false, del: false, speed: 1, loop: true, up: false };
+const pararGravacao = () => { const a = $('rxAudio'); if (a && !a.paused) a.pause(); };
+
+// progressões: com conta, ficam também no servidor (não somem se o navegador apagar os dados)
+let syncTimer = null;
+const syncMine = () => {
+  if (!conta.usuario) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => api.gravarProgs(myProgs).catch(() => {}), 600);
+};
+async function puxarProgs() {
+  try {
+    const { progressoes } = await api.lerProgs(), srv = Array.isArray(progressoes) ? progressoes.filter(validProg) : [];
+    const ids = new Set(srv.map(m => m.id)), extra = myProgs.filter(m => !ids.has(m.id)); // as deste aparelho que o servidor não tem
+    const juntas = [...srv, ...extra];
+    if (progressoes === null || extra.length) await api.gravarProgs(juntas);
+    myProgs = juntas; saveMine(true);
+    if (state.tab === 'progressoes' && !state.p.ed) renderProgressoes();
+  } catch {}
+}
+
+async function carregarConta() {
+  const e = await api.estado();
+  conta.usuario = e.usuario; conta.cadastro = e.cadastro; conta.login = !!e.login; conta.pronto = true;
+  $('contaBtn').hidden = !conta.login; // modo simples (sem login): o botão de conta nem aparece
+  $('contaBtn').classList.toggle('on', !!conta.usuario);
+  $('contaBtn').title = conta.usuario ? `Conta: ${conta.usuario.nome}` : 'Entrar na sua conta';
+  if (conta.usuario) puxarProgs();
+  state.rx.carregou = false; state.rx.faixas = []; state.rx.sel = null;
+  if (state.tab === 'base') renderBase();
+}
+const campo = (id, rotulo, tipo, auto, extra = '') => `<label>${rotulo}<input id="${id}" type="${tipo}" autocomplete="${auto}" ${extra} required></label>`;
+function renderConta() {
+  const u = conta.usuario, msg = conta.msg ? `<p class="${conta.err ? 'cerr' : 'cok'}" role="alert">${esc(conta.msg)}</p>` : '';
+  let h;
+  if (!api.temServidor) h = '<p>A conta funciona quando o aplicativo roda pelo servidor dele, neste computador (<b>npm start</b>).</p>';
+  else if (u) h = `<p>Você entrou como <b>${esc(u.nome)}</b> (${esc(u.email)}).</p><p class="hint">Suas gravações e suas progressões ficam guardadas na sua conta.</p>${msg}` +
+    (conta.senha ? `<form class="cform" id="cSenha">${campo('cAtual', 'Senha atual', 'password', 'current-password')}${campo('cNova', 'Senha nova (8 ou mais letras ou números)', 'password', 'new-password', 'minlength="8"')}` +
+      '<div class="dlg-actions"><button type="submit" class="play">Trocar a senha</button><button type="button" class="link" id="cSenhaNao">Cancelar</button></div></form>'
+      : '<div class="dlg-actions"><button type="button" class="play" id="cSair">Sair da conta</button><button type="button" class="link" id="cSenhaSim">Trocar a senha</button></div>');
+  else if (conta.cadastro) h = '<p><b>Primeira vez:</b> crie a sua conta. Ela guarda suas gravações e suas progressões.</p>' + msg +
+    `<form class="cform" id="cNovo">${campo('cNome', 'Seu nome', 'text', 'name', 'maxlength="80"')}${campo('cEmail', 'E-mail', 'email', 'username')}` +
+    `${campo('cPass', 'Senha (8 ou mais letras ou números)', 'password', 'new-password', 'minlength="8"')}${campo('cPass2', 'Repita a senha', 'password', 'new-password', 'minlength="8"')}` +
+    '<div class="dlg-actions"><button type="submit" class="play">Criar a conta</button></div></form>';
+  else h = msg + `<form class="cform" id="cEntrar">${campo('cEmail', 'E-mail', 'email', 'username')}${campo('cPass', 'Senha', 'password', 'current-password')}` +
+    '<div class="dlg-actions"><button type="submit" class="play">Entrar</button></div></form>';
+  $('contaBody').innerHTML = h;
+  const ir = async (fn, ok) => {
+    try { await fn(); conta.msg = ok || ''; conta.err = false; conta.senha = false; await carregarConta(); }
+    catch (e) { conta.msg = e.message; conta.err = true; }
+    renderConta();
+  };
+  const val = id => $(id).value;
+  if ($('cEntrar')) $('cEntrar').onsubmit = e => { e.preventDefault(); ir(() => api.entrar(val('cEmail'), val('cPass')), 'Pronto, você entrou.'); };
+  if ($('cNovo')) $('cNovo').onsubmit = e => {
+    e.preventDefault();
+    if (val('cPass') !== val('cPass2')) { conta.msg = 'As duas senhas estão diferentes.'; conta.err = true; renderConta(); return; }
+    ir(() => api.cadastrar(val('cNome'), val('cEmail'), val('cPass')), 'Conta criada. Você já entrou.');
+  };
+  if ($('cSair')) $('cSair').onclick = () => ir(() => api.sair(), 'Você saiu da conta.');
+  if ($('cSenhaSim')) $('cSenhaSim').onclick = () => { conta.senha = true; conta.msg = ''; renderConta(); };
+  if ($('cSenhaNao')) $('cSenhaNao').onclick = () => { conta.senha = false; renderConta(); };
+  if ($('cSenha')) $('cSenha').onsubmit = e => { e.preventDefault(); ir(() => api.trocarSenha(val('cAtual'), val('cNova')), 'Senha trocada. Entre de novo com a senha nova.'); };
+  const f = $('contaBody').querySelector('input'); if (f) setTimeout(() => f.focus(), 50);
+}
+const abrirConta = () => { conta.msg = ''; conta.senha = false; renderConta(); const d = $('contaDlg'); d.showModal ? d.showModal() : d.setAttribute('open', ''); };
+$('contaBtn').onclick = abrirConta;
+$('contaClose').onclick = () => { const d = $('contaDlg'); d.close ? d.close() : d.removeAttribute('open'); };
+$('contaDlg').addEventListener('click', e => { if (e.target === $('contaDlg')) $('contaClose').onclick(); });
+
+// Minhas gravações
+async function carregarFaixas() {
+  const r = state.rx; r.carregando = true;
+  try { const d = await api.faixas(); r.faixas = d.faixas; r.ritmos = d.ritmos; r.carregou = true; if (r.sel && !r.faixas.some(f => f.id === r.sel)) r.sel = null; }
+  catch (e) { r.msg = e.message; r.err = true; if (e.status === 401) await carregarConta(); }
+  r.carregando = false;
+  if (state.tab === 'base' && state.b.fonte === 'rec') renderRec();
+}
+const fxInfo = f => [f.ritmo, f.tom && 'tom ' + f.tom, f.bpm && f.bpm + ' bpm'].filter(Boolean).join(' · ') || 'sem ritmo, tom e andamento';
+function renderRec() {
+  const r = state.rx, a = $('rxAudio');
+  const msg = r.msg ? `<p class="${r.err ? 'cerr' : 'cok'}" role="status">${esc(r.msg)}</p>` : '';
+  if (!api.temServidor || !conta.usuario) {
+    $('rxHead').innerHTML = '<div class="box">' + (!conta.pronto ? '<p>Carregando…</p>' : !api.temServidor
+      ? '<p>As gravações ficam guardadas pelo servidor do aplicativo, neste computador. Abra o app com <b>npm start</b> para usar.</p>'
+      : '<p><b>Minhas gravações:</b> guarde aqui as suas bases (backing tracks) em MP3, M4A ou WAV e toque quando quiser, separadas por ritmo.</p><p><button type="button" class="play" id="rxLogin">Entrar na conta</button></p>') + '</div>';
+    if ($('rxLogin')) $('rxLogin').onclick = abrirConta;
+    $('rxList').innerHTML = ''; $('rxPlayer').hidden = true; return;
+  }
+  if (!r.carregou && !r.carregando) { carregarFaixas(); }
+  const q = fold(r.q), lista = r.faixas.filter(f => (!r.ritmo || f.ritmo === r.ritmo) && (!q || fold(f.nome + ' ' + f.ritmo + ' ' + f.tom).includes(q)));
+  const cont = k => r.faixas.filter(f => f.ritmo === k).length;
+  const ritmoBtns = r.ritmos.length > 1 || (r.ritmos.length === 1 && r.ritmos[0])
+    ? `<div class="roots preg"><b>Ritmo:</b> <button type="button" data-rt="" class="${r.ritmo ? '' : 'on'}">Todos (${r.faixas.length})</button>` +
+      r.ritmos.map(k => `<button type="button" data-rt="${esc(k)}" class="${r.ritmo === k ? 'on' : ''}">${esc(k || 'Sem ritmo')} (${cont(k)})</button>`).join('') + '</div>' : '';
+  $('rxHead').innerHTML = `<div class="rxbar"><input id="rxQ" type="search" placeholder="Buscar: nome, ritmo ou tom" value="${esc(r.q)}" autocomplete="off"><button type="button" class="play" id="rxAdd">+ Acrescentar gravações</button></div>` +
+    (r.up ? `<div class="box"><p><b>Acrescentar gravações</b></p><div class="rxform"><label>Ritmo destas gravações<input id="rxUpRitmo" list="rxRitmos" maxlength="40" value="${esc(r.ritmo)}" placeholder="Ex.: Blues"></label></div>` +
+      `<datalist id="rxRitmos">${r.ritmos.filter(Boolean).map(k => `<option value="${esc(k)}">`).join('')}</datalist>` +
+      '<p class="hint">Pode escolher várias de uma vez, do computador ou do pen drive. Se o nome do arquivo tiver o tom e o andamento (ex.: <i>Blues em A 90bpm.mp3</i>), o app preenche sozinho.</p>' +
+      '<div class="dlg-actions"><button type="button" class="play" id="rxPick">Escolher os arquivos</button><button type="button" class="link" id="rxUpNo">Cancelar</button></div></div>' : '') +
+    msg + ritmoBtns + (r.carregou && !r.faixas.length ? '<p class="hint">Você ainda não guardou nenhuma gravação. Toque em <b>+ Acrescentar gravações</b>.</p>' : '') +
+    (r.carregou && r.faixas.length && !lista.length ? '<p class="hint">Nenhuma gravação com essa busca.</p>' : '');
+  $('rxQ').oninput = e => { r.q = e.target.value; const pos = e.target.selectionStart; renderRec(); $('rxQ').focus(); $('rxQ').setSelectionRange(pos, pos); };
+  $('rxAdd').onclick = () => { r.up = !r.up; r.msg = ''; renderRec(); };
+  if ($('rxUpNo')) $('rxUpNo').onclick = () => { r.up = false; renderRec(); };
+  if ($('rxPick')) $('rxPick').onclick = () => { r.upRitmo = $('rxUpRitmo').value.trim(); $('rxFile').value = ''; $('rxFile').click(); };
+  $('rxHead').querySelectorAll('[data-rt]').forEach(x => x.onclick = () => { r.ritmo = x.dataset.rt; renderRec(); });
+  $('rxList').innerHTML = lista.map(f => `<button type="button" class="pcard ${f.id === r.sel ? 'active' : ''}" data-id="${f.id}"><b>${esc(f.nome)}</b><span>${esc(fxInfo(f))}</span></button>`).join('');
+  $('rxList').querySelectorAll('.pcard').forEach(x => x.onclick = () => {
+    const id = +x.dataset.id; if (r.sel !== id) { r.sel = id; r.edit = r.del = false; a.src = api.audioUrl(id); stopBase(); a.play().catch(() => {}); }
+    renderRec(); $('rxPlayer').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); tabJump = true;
+  });
+  const f = r.faixas.find(x => x.id === r.sel);
+  $('rxPlayer').hidden = !f;
+  if (!f) { if (a.src) { a.pause(); a.removeAttribute('src'); a.load(); } return; }
+  a.loop = r.loop; a.playbackRate = r.speed; a.preservesPitch = a.webkitPreservesPitch = true; // mais lento sem mudar o tom
+  $('rxInfo').innerHTML = `<p><b class="big">${esc(f.nome)}</b></p><p>${esc(fxInfo(f))}</p>`;
+  const delArm = r.del; r.del = false;
+  $('rxCtl').innerHTML = `<div class="roots preg"><b>Velocidade:</b> ${[[0.5, 'Bem lenta'], [0.75, 'Lenta'], [1, 'Normal'], [1.25, 'Rápida']].map(([v, l]) => `<button type="button" data-sp="${v}" class="${r.speed === v ? 'on' : ''}">${l}</button>`).join('')}</div>` +
+    `<div class="roots preg"><b>Repetir:</b> <button type="button" data-lp="1" class="${r.loop ? 'on' : ''}">Sem parar</button><button type="button" data-lp="0" class="${r.loop ? '' : 'on'}">Uma vez</button></div>` +
+    '<p class="hint">Mais lenta não muda o tom: bom para estudar um trecho difícil.</p>' +
+    (r.edit ? `<div class="rxform"><label>Nome<input id="rxN" maxlength="120" value="${esc(f.nome)}"></label><label>Ritmo<input id="rxR" list="rxRitmos2" maxlength="40" value="${esc(f.ritmo)}"></label>` +
+      `<label>Tom (ex.: A, F#, Em)<input id="rxT" maxlength="4" value="${esc(f.tom)}"></label><label>Andamento (bpm)<input id="rxB" type="number" min="30" max="300" inputmode="numeric" value="${f.bpm || ''}"></label></div>` +
+      `<datalist id="rxRitmos2">${r.ritmos.filter(Boolean).map(k => `<option value="${esc(k)}">`).join('')}</datalist>` +
+      '<div class="dlg-actions"><button type="button" class="play" id="rxSave">Guardar</button><button type="button" class="link" id="rxEditNo">Cancelar</button></div>'
+      : `<p><button type="button" class="link" id="rxEdit">Mudar nome, ritmo, tom ou andamento</button> <button type="button" class="link danger" id="rxDel">${delArm ? 'Toque de novo para apagar de vez' : 'Apagar esta gravação'}</button></p>`);
+  $('rxCtl').querySelectorAll('[data-sp]').forEach(x => x.onclick = () => { r.speed = +x.dataset.sp; renderRec(); });
+  $('rxCtl').querySelectorAll('[data-lp]').forEach(x => x.onclick = () => { r.loop = x.dataset.lp === '1'; renderRec(); });
+  if ($('rxEdit')) $('rxEdit').onclick = () => { r.edit = true; renderRec(); };
+  if ($('rxEditNo')) $('rxEditNo').onclick = () => { r.edit = false; renderRec(); };
+  if ($('rxSave')) $('rxSave').onclick = async () => {
+    try { await api.mudarFaixa(f.id, { nome: $('rxN').value, ritmo: $('rxR').value, tom: $('rxT').value.trim(), bpm: $('rxB').value }); r.edit = false; r.msg = 'Guardado.'; r.err = false; await carregarFaixas(); }
+    catch (e) { r.msg = e.message; r.err = true; renderRec(); }
+  };
+  if ($('rxDel')) $('rxDel').onclick = async () => {
+    if (!delArm) { r.del = true; renderRec(); return; }
+    try { await api.apagarFaixa(f.id); r.sel = null; r.msg = 'Gravação apagada.'; r.err = false; await carregarFaixas(); }
+    catch (e) { r.msg = e.message; r.err = true; renderRec(); }
+  };
+}
+$('rxFile').onchange = async e => {
+  const r = state.rx, arqs = [...e.target.files];
+  if (!arqs.length) return;
+  r.up = false; let ok = 0; const erros = [];
+  for (let i = 0; i < arqs.length; i++) {
+    r.msg = `Enviando ${i + 1} de ${arqs.length}: ${arqs[i].name}…`; r.err = false; renderRec();
+    try { await api.enviarFaixa(arqs[i], r.upRitmo); ok++; } catch (err) { erros.push(`${arqs[i].name}: ${err.message}`); }
+  }
+  r.msg = `${ok} gravação(ões) guardada(s).` + (erros.length ? ' Não deu certo: ' + erros.join(' · ') : ''); r.err = !!erros.length;
+  if (r.upRitmo) r.ritmo = r.upRitmo;
+  await carregarFaixas();
+};
+$('rxAudio').addEventListener('play', () => stopBase());
 
 /* ---------- ABA ESCALAS ---------- */
 const formulaText = name => SCALES[name].map(i => STEP_NAME[i]).join(' · ');
@@ -924,7 +1089,7 @@ const TAB_INFO = {
 };
 function setTab(t) {
   tabJump = true;
-  stopProg(); stopBase();
+  stopProg(); stopBase(); pararGravacao();
   document.body.classList.remove('sheet-open');
   if (!TAB_INFO[t]) t = 'escalas';
   const [title, sub, short] = TAB_INFO[t];
@@ -1192,4 +1357,5 @@ document.querySelectorAll('[data-chord-legend]').forEach(el => { el.innerHTML = 
 
 fillRoots();
 setTab(location.hash.slice(1) || 'escalas');
+carregarConta();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

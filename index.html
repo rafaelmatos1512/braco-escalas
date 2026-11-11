@@ -24,7 +24,7 @@
         <h1 id="pageTitle">Escalas</h1>
       </div>
     </div>
-    <div class="font"><button id="helpBtn" class="help" aria-label="Ajuda: está com dúvida?" title="Está com dúvida?"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4.1"/><circle cx="12" cy="17.6" r=".6" fill="currentColor"/></svg></button><button id="tunerBtn" aria-label="Afinador" title="Afinador"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 2.5v8a3.5 3.5 0 0 0 7 0v-8"/><path d="M12 14v7.5"/></svg></button><button id="soundBtn" aria-label="Desligar o som"><svg class="on-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg><svg class="off-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button><button id="themeBtn" title="Tema claro / escuro" aria-label="Mudar para tema claro"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12H4M20 12h2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button><button id="fminus" aria-label="Diminuir letra">A-</button><button id="fplus" aria-label="Aumentar letra">A+</button></div>
+    <div class="font"><button id="contaBtn" hidden aria-label="Sua conta" title="Sua conta"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></button><button id="helpBtn" class="help" aria-label="Ajuda: está com dúvida?" title="Está com dúvida?"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4.1"/><circle cx="12" cy="17.6" r=".6" fill="currentColor"/></svg></button><button id="tunerBtn" aria-label="Afinador" title="Afinador"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 2.5v8a3.5 3.5 0 0 0 7 0v-8"/><path d="M12 14v7.5"/></svg></button><button id="soundBtn" aria-label="Desligar o som"><svg class="on-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg><svg class="off-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button><button id="themeBtn" title="Tema claro / escuro" aria-label="Mudar para tema claro"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12H4M20 12h2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button><button id="fminus" aria-label="Diminuir letra">A-</button><button id="fplus" aria-label="Aumentar letra">A+</button></div>
   </div>
   <p id="pageSub" class="sub"></p>
   <nav id="tabs" aria-label="Seções">
@@ -168,6 +168,8 @@
   </section>
 
   <section id="tab-base" hidden>
+    <div id="bSrc" class="roots"></div>
+    <div id="bSynth">
     <div class="box"><p>Uma <b>base</b> (backing track) toca os acordes em ciclo, sem parar, para você ouvir ou tocar junto. Escolha o tom, a progressão e toque em <b>Tocar</b>.</p></div>
     <h3 class="first">Tom da música</h3>
     <div id="bKeys" class="roots"></div>
@@ -177,6 +179,17 @@
     <div id="bList" class="plist"></div>
     <div id="bPlayer" class="box"></div>
     <div id="bOpts"></div>
+    </div>
+    <div id="bRec" hidden>
+      <div id="rxHead"></div>
+      <div id="rxPlayer" class="box" hidden>
+        <div id="rxInfo"></div>
+        <audio id="rxAudio" controls preload="metadata"></audio>
+        <div id="rxCtl"></div>
+      </div>
+      <div id="rxList" class="plist"></div>
+      <input id="rxFile" type="file" multiple accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.flac,.aif,.aiff" hidden>
+    </div>
   </section>
 
   <section id="tab-aprender" hidden>
@@ -410,6 +423,11 @@
       <p>Da mais grossa para a mais fina: 6ª corda Mi, 5ª Lá, 4ª Ré, 3ª Sol, 2ª Si, 1ª Mi. No desenho do braço, a corda mais fina fica em cima.</p></details>
   </section>
 </main>
+<dialog id="contaDlg" aria-labelledby="contaTitle">
+  <button type="button" class="close" id="contaClose" aria-label="Fechar">✕</button>
+  <h2 id="contaTitle">Sua conta</h2>
+  <div id="contaBody"></div>
+</dialog>
 <dialog id="helpDlg" aria-labelledby="helpTitle">
   <button type="button" class="close" id="helpClose" aria-label="Fechar">✕</button>
   <h2 id="helpTitle">Está com dúvida?</h2>

@@ -6,3 +6,7 @@ node_modules/
 .claude/settings.local.json
 CLAUDE.md
 .claude/
+
+# banco, sessões e gravações do usuário (nunca vão para o git)
+dados/
+__pycache__/
