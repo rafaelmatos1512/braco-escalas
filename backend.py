@@ -3,17 +3,20 @@
 Só biblioteca padrão do Python (3.9+): sqlite3 para o banco, pbkdf2 para senhas.
 Os arquivos de áudio ficam em disco (DADOS/faixas/<usuario>/), nunca dentro do banco.
 """
-import hashlib, hmac, json, os, re, secrets, sqlite3, threading, time
+import hashlib, hmac, json, os, re, secrets, shutil, sqlite3, subprocess, threading, time
 
 RAIZ = os.path.dirname(os.path.abspath(__file__))
 DADOS = os.environ.get('BRACO_DADOS', os.path.join(RAIZ, 'dados'))
 
 SESSAO_DIAS = 30
 ITERACOES = 600_000
-MAX_FAIXA = 300 * 1024 * 1024  # 300 MB por arquivo
+MAX_FAIXA = 600 * 1024 * 1024  # 600 MB por arquivo (WAV de pen drive passa de 100 MB)
 AUDIO = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.wav': 'audio/wav',
          '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.flac': 'audio/flac', '.aif': 'audio/aiff', '.aiff': 'audio/aiff'}
-CAMPOS_FAIXA = ('id', 'nome', 'ritmo', 'tom', 'bpm', 'tamanho', 'criado')
+CAMPOS_FAIXA = ('id', 'nome', 'pasta', 'tom', 'bpm', 'tamanho', 'origem', 'original', 'criado')
+# formatos sem compressão: viram AAC (.m4a) ao guardar, se o ffmpeg estiver instalado (WAV de 64 MB -> uns 4 MB)
+SEM_COMPRESSAO = {'.wav', '.flac', '.aif', '.aiff'}
+KBPS = int(os.environ.get('BRACO_KBPS', 128))
 
 
 class Erro(Exception):
@@ -32,9 +35,9 @@ CREATE TABLE IF NOT EXISTS sessoes (
   token TEXT PRIMARY KEY, usuario INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE, expira INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS faixas (
   id INTEGER PRIMARY KEY, usuario INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-  nome TEXT NOT NULL, ritmo TEXT NOT NULL DEFAULT '', tom TEXT NOT NULL DEFAULT '', bpm INTEGER,
-  arquivo TEXT NOT NULL, mime TEXT NOT NULL, tamanho INTEGER NOT NULL, criado TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
-CREATE INDEX IF NOT EXISTS faixas_usuario ON faixas(usuario, ritmo);
+  nome TEXT NOT NULL, pasta TEXT NOT NULL DEFAULT '', tom TEXT NOT NULL DEFAULT '', bpm INTEGER,
+  arquivo TEXT NOT NULL, mime TEXT NOT NULL, tamanho INTEGER NOT NULL,
+  origem TEXT NOT NULL DEFAULT '', original INTEGER, criado TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS progressoes (
   usuario INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE, dados TEXT NOT NULL, atualizado INTEGER NOT NULL);
 """
@@ -52,8 +55,24 @@ def conectar():
         if caminho not in _iniciado:
             db.execute('PRAGMA journal_mode = WAL')
             db.executescript(ESQUEMA)
+            _migrar(db)
             _iniciado.add(caminho)
     return db
+
+
+def _migrar(db):
+    """Banco de versão anterior: 'ritmo' virou 'pasta'; guarda o nome e o tamanho do arquivo de origem."""
+    cols = {r[1] for r in db.execute('PRAGMA table_info(faixas)')}
+    if 'pasta' not in cols:
+        db.execute("ALTER TABLE faixas ADD COLUMN pasta TEXT NOT NULL DEFAULT ''")
+        if 'ritmo' in cols:
+            db.execute('UPDATE faixas SET pasta = ritmo')
+    if 'origem' not in cols:
+        db.execute("ALTER TABLE faixas ADD COLUMN origem TEXT NOT NULL DEFAULT ''")
+    if 'original' not in cols:
+        db.execute('ALTER TABLE faixas ADD COLUMN original INTEGER')
+    db.execute('CREATE INDEX IF NOT EXISTS faixas_pasta ON faixas(usuario, pasta)')
+    db.commit()
 
 
 # ---------- senhas e sessões ----------
@@ -239,39 +258,102 @@ def _tom(v):
     return v
 
 
+def _pasta(v):
+    """Caminho de pasta limpo, sempre com '/': ' A maior / Blues/' -> 'A maior/Blues'. Sem '..', no máximo 6 níveis."""
+    partes = [_limpa(x, 60) for x in re.split(r'[\\/]+', str(v or ''))]
+    partes = [x for x in partes if x and x not in ('.', '..')]
+    if len(partes) > 6:
+        raise Erro(400, 'Pastas demais, uma dentro da outra (no máximo 6).')
+    return '/'.join(partes)
+
+
 def pasta_usuario(uid):
     p = os.path.join(DADOS, 'faixas', str(int(uid)))
     os.makedirs(p, exist_ok=True)
     return p
 
 
-def guardar_faixa(db, uid, nome_arquivo, ler, tamanho, ritmo='', nome=None, tom=None, bpm=None):
-    """Grava o áudio em disco (nome gerado, nunca o do usuário) e registra no banco.
-    `ler(n)` devolve os próximos n bytes; `tamanho` é o total esperado."""
-    ext = os.path.splitext(nome_arquivo or '')[1].lower()
+def ffmpeg():
+    """Caminho do ffmpeg (para diminuir WAV), ou None. Procura em BRACO_FFMPEG, na pasta ferramentas/ do app e no PATH."""
+    for c in (os.environ.get('BRACO_FFMPEG'), os.path.join(RAIZ, 'ferramentas', 'ffmpeg.exe'),
+              os.path.join(RAIZ, 'ferramentas', 'ffmpeg'), shutil.which('ffmpeg')):
+        if c and os.path.isfile(c):
+            return c
+    return None
+
+
+def comprimir(origem, destino):
+    """Converte para AAC (.m4a). Devolve True se deu certo; se não, quem chamou fica com o original."""
+    exe = ffmpeg()
+    if not exe:
+        return False
+    cmd = [exe, '-nostdin', '-hide_banner', '-loglevel', 'error', '-y', '-i', origem, '-vn', '-map_metadata', '-1',
+           '-c:a', 'aac', '-b:a', f'{KBPS}k', '-movflags', '+faststart', destino]
+    try:
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=900,
+                           creationflags=0x08000000 if os.name == 'nt' else 0)  # no Windows, sem abrir janela preta
+        ok = r.returncode == 0 and os.path.exists(destino) and os.path.getsize(destino) > 0
+    except (OSError, subprocess.SubprocessError):
+        ok = False
+    if not ok and os.path.exists(destino):
+        os.remove(destino)
+    return ok
+
+
+def ja_existe(db, uid, pasta, origem, original):
+    """Mesmo arquivo (nome e tamanho de origem) já guardado nessa pasta? Evita duplicar ao importar de novo."""
+    r = db.execute('SELECT id FROM faixas WHERE usuario = ? AND pasta = ? AND origem = ? AND original = ?',
+                   (uid, pasta, origem, original)).fetchone()
+    return r['id'] if r else None
+
+
+def guardar_faixa(db, uid, nome_arquivo, ler, tamanho, pasta='', nome=None, tom=None, bpm=None):
+    """Grava o áudio em disco (nome gerado, nunca o do usuário) e registra no banco. WAV/FLAC/AIFF viram .m4a.
+    `ler(n)` devolve os próximos n bytes; `tamanho` é o total esperado. Devolve a faixa, com 'repetida' se já existia."""
+    origem = os.path.basename(str(nome_arquivo or '').replace('\\', '/'))[:200]
+    ext = os.path.splitext(origem)[1].lower()
     if ext not in AUDIO:
         raise Erro(415, 'Esse arquivo não é de áudio. Use MP3, M4A, WAV, OGG, AAC, FLAC ou AIFF.')
     if not 0 < tamanho <= MAX_FAIXA:
-        raise Erro(413, 'Arquivo vazio ou grande demais (máximo de 300 MB).')
-    n0, t0, b0 = dados_do_nome(nome_arquivo)
-    arquivo = secrets.token_hex(12) + ext
-    destino = os.path.join(pasta_usuario(uid), arquivo)
-    resta = tamanho
+        raise Erro(413, 'Arquivo vazio ou grande demais (máximo de 600 MB).')
+    pasta = _pasta(pasta)
+    tom = _tom(tom) if tom else None
+    bpm = _bpm(bpm) if bpm not in (None, '') else None
+    velho = ja_existe(db, uid, pasta, origem, tamanho)
+    if velho:
+        resta = tamanho  # descarta o que veio, para a conexão terminar limpa
+        while resta:
+            b = ler(min(resta, 1 << 20))
+            if not b:
+                break
+            resta -= len(b)
+        return dict(faixa(db, uid, velho), repetida=True)
+    n0, t0, b0 = dados_do_nome(origem)
+    base = secrets.token_hex(12)
+    bruto = os.path.join(pasta_usuario(uid), base + ext)
+    final, final_ext = bruto, ext
     try:
-        with open(destino, 'wb') as f:
+        with open(bruto, 'wb') as f:
+            resta = tamanho
             while resta:
                 bloco = ler(min(resta, 1 << 20))
                 if not bloco:
                     raise Erro(400, 'O envio do arquivo foi interrompido.')
                 f.write(bloco)
                 resta -= len(bloco)
-        cur = db.execute('INSERT INTO faixas (usuario, nome, ritmo, tom, bpm, arquivo, mime, tamanho) VALUES (?,?,?,?,?,?,?,?)',
-                         (uid, _limpa(nome, 120) or n0, _limpa(ritmo, 40), _tom(tom) if tom else t0,
-                          _bpm(bpm) if bpm not in (None, '') else b0, arquivo, AUDIO[ext], tamanho))
+        if ext in SEM_COMPRESSAO:
+            leve = os.path.join(pasta_usuario(uid), base + '.m4a')
+            if comprimir(bruto, leve):
+                os.remove(bruto)
+                final, final_ext = leve, '.m4a'
+        cur = db.execute('INSERT INTO faixas (usuario, nome, pasta, tom, bpm, arquivo, mime, tamanho, origem, original) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                         (uid, _limpa(nome, 120) or n0, pasta, tom if tom is not None else t0, bpm if bpm is not None else b0,
+                          os.path.basename(final), AUDIO[final_ext], os.path.getsize(final), origem, tamanho))
         db.commit()
     except BaseException:
-        if os.path.exists(destino):
-            os.remove(destino)
+        for c in {bruto, final}:
+            if os.path.exists(c):
+                os.remove(c)
         raise
     return faixa(db, uid, cur.lastrowid)
 
@@ -283,17 +365,22 @@ def faixa(db, uid, fid, interno=False):
     return dict(r) if interno else {k: r[k] for k in CAMPOS_FAIXA}
 
 
-def listar_faixas(db, uid, ritmo=None, busca=None):
+def listar_faixas(db, uid, pasta=None, busca=None):
+    """Faixas (de uma pasta e das de dentro dela, se `pasta`) e a lista de todas as pastas."""
     sql, args = 'SELECT * FROM faixas WHERE usuario = ?', [uid]
-    if ritmo:
-        sql += ' AND ritmo = ?'; args.append(ritmo)
+    if pasta:
+        p = _pasta(pasta)
+        sql += " AND (pasta = ? OR substr(pasta, 1, ?) = ?)"; args += [p, len(p) + 1, p + '/']
     if busca:
-        sql += " AND (nome LIKE ? ESCAPE '\\' OR ritmo LIKE ? ESCAPE '\\')"
+        sql += " AND (nome LIKE ? ESCAPE '\\' OR pasta LIKE ? ESCAPE '\\')"
         q = '%' + re.sub(r'([%_\\])', r'\\\1', busca) + '%'
         args += [q, q]
-    rows = db.execute(sql + ' ORDER BY ritmo COLLATE NOCASE, nome COLLATE NOCASE', args).fetchall()
-    ritmos = [r[0] for r in db.execute("SELECT DISTINCT ritmo FROM faixas WHERE usuario = ? ORDER BY ritmo COLLATE NOCASE", (uid,))]
-    return {'faixas': [{k: r[k] for k in CAMPOS_FAIXA} for r in rows], 'ritmos': ritmos}
+    rows = db.execute(sql + ' ORDER BY pasta COLLATE NOCASE, nome COLLATE NOCASE', args).fetchall()
+    pastas = set()
+    for (p,) in db.execute('SELECT DISTINCT pasta FROM faixas WHERE usuario = ?', (uid,)):
+        partes = p.split('/') if p else []
+        pastas.update('/'.join(partes[:i]) for i in range(1, len(partes) + 1))  # inclui as pastas de cima
+    return {'faixas': [{k: r[k] for k in CAMPOS_FAIXA} for r in rows], 'pastas': sorted(pastas, key=str.lower)}
 
 
 def mudar_faixa(db, uid, fid, dados):
@@ -304,8 +391,8 @@ def mudar_faixa(db, uid, fid, dados):
         if not nome:
             raise Erro(400, 'Escreva um nome para a faixa.')
         campos.append('nome = ?'); args.append(nome)
-    if 'ritmo' in dados:
-        campos.append('ritmo = ?'); args.append(_limpa(dados['ritmo'], 40))
+    if 'pasta' in dados:
+        campos.append('pasta = ?'); args.append(_pasta(dados['pasta']))
     if 'tom' in dados:
         campos.append('tom = ?'); args.append(_tom(dados['tom']))
     if 'bpm' in dados:
@@ -314,6 +401,44 @@ def mudar_faixa(db, uid, fid, dados):
         db.execute(f"UPDATE faixas SET {', '.join(campos)} WHERE id = ? AND usuario = ?", args + [fid, uid])
         db.commit()
     return faixa(db, uid, fid)
+
+
+def _da_pasta(db, uid, pasta):
+    """Faixas que estão na pasta ou em pastas dentro dela."""
+    return db.execute("SELECT * FROM faixas WHERE usuario = ? AND (pasta = ? OR substr(pasta, 1, ?) = ?)",
+                      (uid, pasta, len(pasta) + 1, pasta + '/')).fetchall()
+
+
+def mover_pasta(db, uid, de, para):
+    """Muda o nome ou o lugar de uma pasta (e de tudo o que está dentro). Devolve quantas faixas mudaram."""
+    de, para = _pasta(de), _pasta(para)
+    if not de:
+        raise Erro(400, 'Escolha a pasta.')
+    if not para:
+        raise Erro(400, 'Escreva o nome da pasta.')
+    if para == de:
+        return 0
+    if para.lower().startswith(de.lower() + '/'):
+        raise Erro(400, 'Não dá para pôr uma pasta dentro dela mesma.')
+    rows = _da_pasta(db, uid, de)
+    for r in rows:
+        nova = para + r['pasta'][len(de):]
+        if nova.count('/') > 5:
+            raise Erro(400, 'Pastas demais, uma dentro da outra (no máximo 6).')
+        db.execute('UPDATE faixas SET pasta = ? WHERE id = ?', (nova, r['id']))
+    db.commit()
+    return len(rows)
+
+
+def apagar_pasta(db, uid, pasta):
+    """Apaga a pasta e tudo o que está dentro (faixas e arquivos). Devolve quantas faixas saíram."""
+    pasta = _pasta(pasta)
+    if not pasta:
+        raise Erro(400, 'Escolha a pasta.')
+    rows = _da_pasta(db, uid, pasta)
+    for r in rows:
+        apagar_faixa(db, uid, r['id'])
+    return len(rows)
 
 
 def apagar_faixa(db, uid, fid):
@@ -353,30 +478,28 @@ def gravar_progressoes(db, uid, lista):
 
 
 # ---------- importar uma pasta (pen drive, HD) ----------
-def importar_pasta(db, uid, pasta, avisar=print):
-    """Copia todos os áudios de `pasta` para o app. A subpasta vira o ritmo: pasta/Blues/x.mp3 -> ritmo Blues.
-    Pula arquivo que já foi importado (mesmo nome, ritmo e tamanho)."""
+def importar_pasta(db, uid, pasta, destino='', avisar=print):
+    """Copia todos os áudios de `pasta` para o app, mantendo as subpastas: pen/A maior/Blues/x.wav -> pasta 'A maior/Blues'.
+    `destino` é a pasta do app onde tudo entra. Pula o que já foi importado (mesmo arquivo na mesma pasta)."""
     pasta = os.path.abspath(pasta)
     feitos = pulados = 0
     for raiz, dirs, arquivos in os.walk(pasta):
-        dirs[:] = sorted(d for d in dirs if not d.startswith('.'))
+        dirs[:] = sorted(d for d in dirs if not d.startswith('.') and d != 'System Volume Information')
         rel = os.path.relpath(raiz, pasta)
-        ritmo = '' if rel == '.' else rel.split(os.sep)[0]
+        alvo = _pasta(destino + '/' + ('' if rel == '.' else rel.replace(os.sep, '/')))
         for nome in sorted(arquivos):
             if nome.startswith('.') or os.path.splitext(nome)[1].lower() not in AUDIO:
                 continue
             caminho = os.path.join(raiz, nome)
             tamanho = os.path.getsize(caminho)
-            n, _, _ = dados_do_nome(nome)
-            if db.execute('SELECT 1 FROM faixas WHERE usuario = ? AND nome = ? AND ritmo = ? AND tamanho = ?',
-                          (uid, n, ritmo[:40], tamanho)).fetchone():
+            if ja_existe(db, uid, alvo, nome[:200], tamanho):
                 pulados += 1
                 continue
             try:
                 with open(caminho, 'rb') as f:
-                    guardar_faixa(db, uid, nome, f.read, tamanho, ritmo=ritmo)
+                    guardar_faixa(db, uid, nome, f.read, tamanho, pasta=alvo)
                 feitos += 1
-                avisar(f'  + {ritmo or "(sem ritmo)"} / {nome}')
+                avisar(f'  + {alvo or "(fora das pastas)"} / {nome}')
             except Erro as e:
                 avisar(f'  ! {nome}: {e.msg}')
     return feitos, pulados

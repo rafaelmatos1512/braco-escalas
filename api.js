@@ -25,10 +25,13 @@ export const sair = () => req('POST', '/api/sair', {});
 export const trocarSenha = (atual, nova) => req('POST', '/api/senha', { atual, nova });
 
 export const faixas = () => req('GET', '/api/faixas');
-export function enviarFaixa(arquivo, ritmo) {
-  const q = new URLSearchParams({ arquivo: arquivo.name, ritmo: ritmo || '' });
+// `pasta` = onde guardar, com '/' entre as pastas ('A maior/Blues'). WAV é diminuído pelo servidor.
+export function enviarFaixa(arquivo, pasta) {
+  const q = new URLSearchParams({ arquivo: arquivo.name, pasta: pasta || '' });
   return req('POST', '/api/faixas?' + q, arquivo, { 'Content-Type': arquivo.type || 'application/octet-stream' });
 }
+export const moverPasta = (de, para) => req('POST', '/api/pastas/mover', { de, para });
+export const apagarPasta = pasta => req('POST', '/api/pastas/apagar', { pasta });
 export const mudarFaixa = (id, dados) => req('PATCH', `/api/faixas/${id}`, dados);
 export const apagarFaixa = id => req('DELETE', `/api/faixas/${id}`);
 export const audioUrl = id => `/api/faixas/${id}/audio`;

@@ -1,4 +1,4 @@
-import http.client, json, os, shutil, sys, tempfile, threading, unittest
+import http.client, json, os, shutil, struct, sys, tempfile, threading, unittest, wave
 
 TMP = tempfile.mkdtemp(prefix='braco-teste-')
 os.environ['BRACO_DADOS'] = TMP
@@ -87,8 +87,8 @@ class Funcoes(unittest.TestCase):
         a = B.cadastrar(self.db, 'A', 'a@a.com', 'senha1234')
         b = B.cadastrar(self.db, 'B', 'b@b.com', 'senha1234', aberto=True)
         dado = b'ID3' + b'\0' * 100
-        f = B.guardar_faixa(self.db, a, 'Rock em E 120bpm.mp3', _leitor(dado), len(dado), ritmo='Rock')
-        self.assertEqual((f['ritmo'], f['tom'], f['bpm']), ('Rock', 'E', 120))
+        f = B.guardar_faixa(self.db, a, 'Rock em E 120bpm.mp3', _leitor(dado), len(dado), pasta='Rock')
+        self.assertEqual((f['pasta'], f['tom'], f['bpm'], f['origem'], f['original']), ('Rock', 'E', 120, 'Rock em E 120bpm.mp3', len(dado)))
         caminho, mime = B.caminho_faixa(self.db, a, f['id'])
         self.assertEqual(mime, 'audio/mpeg')
         self.assertTrue(caminho.startswith(os.path.join(TMP, 'faixas', str(a))))
@@ -96,9 +96,9 @@ class Funcoes(unittest.TestCase):
         with self.assertRaises(B.Erro):
             B.caminho_faixa(self.db, b, f['id'])  # a faixa de A não aparece para B
         self.assertEqual(B.listar_faixas(self.db, b)['faixas'], [])
-        lst = B.listar_faixas(self.db, a, ritmo='Rock')
+        lst = B.listar_faixas(self.db, a, pasta='Rock')
         self.assertEqual([x['id'] for x in lst['faixas']], [f['id']])
-        self.assertEqual(lst['ritmos'], ['Rock'])
+        self.assertEqual(lst['pastas'], ['Rock'])
         self.assertEqual(B.mudar_faixa(self.db, a, f['id'], {'tom': 'Am', 'bpm': '95', 'nome': 'Minha'})['tom'], 'Am')
         with self.assertRaises(B.Erro):
             B.mudar_faixa(self.db, a, f['id'], {'tom': 'H#'})
@@ -130,16 +130,84 @@ class Funcoes(unittest.TestCase):
         with self.assertRaises(B.Erro):
             B.gravar_progressoes(self.db, a, {'nao': 'lista'})
 
-    def test_importar_pasta_com_subpasta_como_ritmo(self):
+    def test_importar_pasta_mantem_as_subpastas(self):
         a = B.cadastrar(self.db, 'A', 'a@a.com', 'senha1234')
         pen = tempfile.mkdtemp(dir=TMP)
-        os.makedirs(os.path.join(pen, 'Blues'))
-        open(os.path.join(pen, 'Blues', 'Shuffle em A 90bpm.mp3'), 'wb').write(b'ID3abc')
-        open(os.path.join(pen, 'Blues', 'leia.txt'), 'w').write('não é áudio')
-        open(os.path.join(pen, 'solta.wav'), 'wb').write(b'RIFFabc')
+        os.makedirs(os.path.join(pen, 'A maior', 'Blues'))
+        os.makedirs(os.path.join(pen, 'System Volume Information'))
+        open(os.path.join(pen, 'A maior', 'Blues', 'Shuffle em A 90bpm.mp3'), 'wb').write(b'ID3abc')
+        open(os.path.join(pen, 'A maior', 'Blues', 'leia.txt'), 'w').write('não é áudio')
+        open(os.path.join(pen, 'System Volume Information', 'x.mp3'), 'wb').write(b'ID3')
+        open(os.path.join(pen, 'solta.mp3'), 'wb').write(b'ID3abc')
         self.assertEqual(B.importar_pasta(self.db, a, pen, avisar=lambda m: None), (2, 0))
         self.assertEqual(B.importar_pasta(self.db, a, pen, avisar=lambda m: None), (0, 2))  # não duplica
-        self.assertEqual(sorted(B.listar_faixas(self.db, a)['ritmos']), ['', 'Blues'])
+        self.assertEqual(B.listar_faixas(self.db, a)['pastas'], ['A maior', 'A maior/Blues'])  # inclui a de cima
+        self.assertEqual(B.importar_pasta(self.db, a, pen, destino='Pen', avisar=lambda m: None), (2, 0))
+        self.assertIn('Pen/A maior/Blues', B.listar_faixas(self.db, a)['pastas'])
+
+    def test_pasta_limpa(self):
+        self.assertEqual(B._pasta(' A maior \\ Blues/ '), 'A maior/Blues')
+        self.assertEqual(B._pasta('../../etc/./x'), 'etc/x')
+        self.assertEqual(B._pasta(None), '')
+        with self.assertRaises(B.Erro):
+            B._pasta('/'.join('abcdefg'))
+
+    def test_repetida_nao_duplica(self):
+        a = B.usuario_local(self.db)['id']
+        f1 = B.guardar_faixa(self.db, a, 'x.mp3', _leitor(b'ID3abc'), 6, pasta='P')
+        f2 = B.guardar_faixa(self.db, a, 'x.mp3', _leitor(b'ID3abc'), 6, pasta='P')
+        self.assertEqual((f2['id'], f2.get('repetida')), (f1['id'], True))
+        self.assertNotEqual(B.guardar_faixa(self.db, a, 'x.mp3', _leitor(b'ID3abc'), 6, pasta='Q')['id'], f1['id'])
+
+    def test_mover_e_apagar_pasta(self):
+        a = B.usuario_local(self.db)['id']
+        ids = [B.guardar_faixa(self.db, a, n, _leitor(b'ID3abc'), 6, pasta=p)['id']
+               for n, p in (('1.mp3', 'A maior'), ('2.mp3', 'A maior/Blues'), ('3.mp3', 'A maiores'), ('4.mp3', 'E menor'))]
+        self.assertEqual(B.mover_pasta(self.db, a, 'A maior', 'Tons/Lá maior'), 2)  # 'A maiores' fica onde está
+        self.assertEqual(B.listar_faixas(self.db, a)['pastas'], ['A maiores', 'E menor', 'Tons', 'Tons/Lá maior', 'Tons/Lá maior/Blues'])
+        self.assertEqual(len(B.listar_faixas(self.db, a, pasta='Tons')['faixas']), 2)
+        with self.assertRaises(B.Erro):
+            B.mover_pasta(self.db, a, 'Tons', 'Tons/Dentro')
+        caminho = B.caminho_faixa(self.db, a, ids[1])[0]
+        self.assertEqual(B.apagar_pasta(self.db, a, 'Tons'), 2)
+        self.assertFalse(os.path.exists(caminho))
+        self.assertEqual([x['id'] for x in B.listar_faixas(self.db, a)['faixas']], [ids[2], ids[3]])
+        self.assertEqual(B.mudar_faixa(self.db, a, ids[3], {'pasta': 'E menor/Pop'})['pasta'], 'E menor/Pop')
+
+    @unittest.skipUnless(B.ffmpeg(), 'ffmpeg não instalado')
+    def test_wav_vira_m4a(self):
+        a = B.usuario_local(self.db)['id']
+        caminho = os.path.join(TMP, 'tom.wav')
+        with wave.open(caminho, 'wb') as w:  # 2 s de onda, 44,1 kHz, 16 bits
+            w.setnchannels(2); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b''.join(struct.pack('<hh', v, v) for v in ((i * 300) % 20000 - 10000 for i in range(88200))))
+        tam = os.path.getsize(caminho)
+        with open(caminho, 'rb') as fh:
+            f = B.guardar_faixa(self.db, a, 'Blues em A.wav', fh.read, tam, pasta='A')
+        disco, mime = B.caminho_faixa(self.db, a, f['id'])
+        self.assertEqual((mime, os.path.splitext(disco)[1], f['original'], f['origem']), ('audio/mp4', '.m4a', tam, 'Blues em A.wav'))
+        self.assertLess(f['tamanho'], tam / 5)
+        self.assertFalse([x for x in os.listdir(os.path.dirname(disco)) if x.endswith('.wav')])  # o WAV não fica
+
+    def test_migra_banco_antigo_com_ritmo(self):
+        import sqlite3
+        pasta = tempfile.mkdtemp(dir=TMP)
+        velho = sqlite3.connect(os.path.join(pasta, 'app.db'))
+        velho.executescript(B.ESQUEMA.split('CREATE TABLE IF NOT EXISTS faixas')[0] + """
+CREATE TABLE faixas (id INTEGER PRIMARY KEY, usuario INTEGER NOT NULL, nome TEXT NOT NULL, ritmo TEXT NOT NULL DEFAULT '',
+  tom TEXT NOT NULL DEFAULT '', bpm INTEGER, arquivo TEXT NOT NULL, mime TEXT NOT NULL, tamanho INTEGER NOT NULL,
+  criado TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO usuarios (nome, email, senha) VALUES ('Eu', 'local@braco.local', 'x');
+INSERT INTO faixas (usuario, nome, ritmo, arquivo, mime, tamanho) VALUES (1, 'Velha', 'Blues', 'a.mp3', 'audio/mpeg', 3);""")
+        velho.commit(); velho.close()
+        antes, B.DADOS = B.DADOS, pasta
+        try:
+            db = B.conectar()
+            self.assertEqual([(f['nome'], f['pasta']) for f in B.listar_faixas(db, 1)['faixas']], [('Velha', 'Blues')])
+            B.guardar_faixa(db, 1, 'nova.mp3', _leitor(b'ID3'), 3, pasta='Rock')
+            db.close()
+        finally:
+            B.DADOS = antes
 
 
 def _leitor(dado):
@@ -180,7 +248,8 @@ class Servidor(unittest.TestCase):
 
     def test_fluxo_completo(self):
         r, d = self.req('GET', '/api/estado')
-        self.assertEqual(json.loads(d), {'usuario': None, 'cadastro': True, 'login': True})
+        d = json.loads(d); d.pop('comprime')
+        self.assertEqual(d, {'usuario': None, 'cadastro': True, 'login': True})
         r, _ = self.req('GET', '/api/faixas')
         self.assertEqual(r.status, 401)
         # sem o cabeçalho do app, pedido que muda dados é recusado (proteção contra outro site)
@@ -194,7 +263,7 @@ class Servidor(unittest.TestCase):
         self.assertFalse(json.loads(self.req('GET', '/api/estado')[1])['cadastro'])  # fechou depois da 1ª conta
 
         audio = b'ID3' + bytes(range(256)) * 40
-        r, d = self.req('POST', '/api/faixas?arquivo=Blues%20em%20A%2090bpm.mp3&ritmo=Blues', audio, cookie=cookie)
+        r, d = self.req('POST', '/api/faixas?arquivo=Blues%20em%20A%2090bpm.mp3&pasta=A%20maior%2FBlues', audio, cookie=cookie)
         self.assertEqual(r.status, 201, d)
         fid = json.loads(d)['id']
         r, d = self.req('GET', f'/api/faixas/{fid}/audio', cookie=cookie)
@@ -218,7 +287,8 @@ class Servidor(unittest.TestCase):
 
     def test_arquivos_protegidos_e_site(self):
         self.assertEqual(self.req('GET', '/')[0].status, 200)
-        self.assertEqual(self.req('GET', '/app.js')[0].status, 200)
+        r, _ = self.req('GET', '/app.js')
+        self.assertEqual((r.status, r.getheader('Content-Type')), (200, 'text/javascript; charset=utf-8'))  # mesmo no Windows
         for rota in ('/dados/app.db', '/backend.py', '/serve.py', '/.git/config', '/CLAUDE.md', '/test/test_backend.py', '/icons/', '/%2e%2e/etc/passwd'):
             self.assertEqual(self.req('GET', rota)[0].status, 404, rota)
 
@@ -256,9 +326,15 @@ class ServidorSimples(unittest.TestCase):
     def test_sem_login(self):
         d = json.loads(self.req('GET', '/api/estado')[1])
         self.assertFalse(d['login']); self.assertTrue(d['usuario'])
-        r, d = self.req('POST', '/api/faixas?arquivo=Blues%20em%20A.mp3&ritmo=Blues', b'ID3abc')
+        r, d = self.req('POST', '/api/faixas?arquivo=Blues%20em%20A.mp3&pasta=Tons%2FBlues', b'ID3abc')
         self.assertEqual(r.status, 201, d)
+        r, d = self.req('POST', '/api/faixas?arquivo=Blues%20em%20A.mp3&pasta=Tons%2FBlues', b'ID3abc')
+        self.assertEqual((r.status, json.loads(d)['repetida']), (200, True))  # mesmo arquivo de novo não duplica
         self.assertEqual(len(json.loads(self.req('GET', '/api/faixas')[1])['faixas']), 1)
+        r, d = self.req('POST', '/api/pastas/mover', {'de': 'Tons', 'para': 'Meus tons'})
+        self.assertEqual(json.loads(d), {'mudaram': 1})
+        self.assertEqual(json.loads(self.req('GET', '/api/faixas')[1])['pastas'], ['Meus tons', 'Meus tons/Blues'])
+        self.assertEqual(json.loads(self.req('POST', '/api/pastas/apagar', {'pasta': 'Meus tons'})[1]), {'apagadas': 1})
         self.assertEqual(self.req('POST', '/api/entrar', {'email': 'a@a.com', 'senha': 'x'})[0].status, 404)
         self.assertEqual(self.req('POST', '/api/faixas?arquivo=x.mp3', b'ID3', app=False)[0].status, 403)  # proteção continua
 

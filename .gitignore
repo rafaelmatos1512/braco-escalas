@@ -10,3 +10,8 @@ CLAUDE.md
 # banco, sessões e gravações do usuário (nunca vão para o git)
 dados/
 __pycache__/
+
+# caminhos do Python/ffmpeg gravados pelo instalar.ps1 no Windows, e binários
+windows/python.txt
+windows/ffmpeg.txt
+ferramentas/

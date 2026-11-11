@@ -1,6 +1,7 @@
 # Servidor do app: arquivos do site (sem cache) + API de contas, faixas e progressões.
 #   python3 serve.py                      -> http://localhost:5173
-#   python3 serve.py importar <pasta> [e-mail]   -> copia os áudios da pasta (subpasta = ritmo)
+#   python3 serve.py importar <pasta> [pasta do app] [e-mail]  -> copia os áudios mantendo as subpastas
+#   BRACO_DADOS=<pasta>                   -> onde ficam banco e áudios (padrão: dados/ ao lado deste arquivo)
 #   HOST=0.0.0.0 python3 serve.py         -> aceita acesso de outros aparelhos da rede (cuidado)
 #   BRACO_LOGIN=1 python3 serve.py        -> liga contas com e-mail e senha (para vender / várias pessoas).
 #                                            Sem isso, modo simples: sem login, tudo guardado neste computador.
@@ -21,6 +22,10 @@ limite = B.Limite()
 class H(http.server.SimpleHTTPRequestHandler):
     server_version = 'Braco'
     sys_version = ''
+    # tipos fixos: no Windows o registro às vezes diz que .js é text/plain, e o Chrome recusa o app
+    extensions_map = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+                      '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json',
+                      '.webmanifest': 'application/manifest+json', '.txt': 'text/plain; charset=utf-8', '': 'application/octet-stream'}
 
     def __init__(self, *a, **k):
         super().__init__(*a, directory=B.RAIZ, **k)
@@ -127,8 +132,8 @@ class H(http.server.SimpleHTTPRequestHandler):
         m = re.fullmatch(r'/api/faixas/(\d+)(/audio)?', rota)
         if rota == '/api/estado' and metodo == 'GET':
             if not LOGIN:
-                return self._json(200, {'usuario': B.usuario_local(db), 'cadastro': False, 'login': False})
-            return self._json(200, {'usuario': B.usuario_da_sessao(db, self._token()),
+                return self._json(200, {'usuario': B.usuario_local(db), 'cadastro': False, 'login': False, 'comprime': bool(B.ffmpeg())})
+            return self._json(200, {'usuario': B.usuario_da_sessao(db, self._token()), 'comprime': bool(B.ffmpeg()),
                                     'cadastro': CADASTRO_ABERTO or not B.tem_usuarios(db), 'login': True})
         if not LOGIN and rota in ('/api/cadastro', '/api/entrar', '/api/sair', '/api/senha'):
             raise B.Erro(404, 'As contas estão desligadas neste computador.')
@@ -148,12 +153,17 @@ class H(http.server.SimpleHTTPRequestHandler):
 
         u = self._usuario(db)  # daqui para baixo, só com conta
         if rota == '/api/faixas' and metodo == 'GET':
-            return self._json(200, B.listar_faixas(db, u['id'], (q.get('ritmo') or [''])[0], (q.get('q') or [''])[0]))
+            return self._json(200, B.listar_faixas(db, u['id'], (q.get('pasta') or [''])[0], (q.get('q') or [''])[0]))
         if rota == '/api/faixas' and metodo == 'POST':
             n = int(self.headers.get('Content-Length') or 0)
             g = lambda k: (q.get(k) or [None])[0]
-            f = B.guardar_faixa(db, u['id'], g('arquivo'), self.rfile.read, n, ritmo=g('ritmo') or '', nome=g('nome'), tom=g('tom'), bpm=g('bpm'))
-            return self._json(201, f)
+            f = B.guardar_faixa(db, u['id'], g('arquivo'), self.rfile.read, n, pasta=g('pasta') or '', nome=g('nome'), tom=g('tom'), bpm=g('bpm'))
+            return self._json(200 if f.get('repetida') else 201, f)
+        if rota == '/api/pastas/mover' and metodo == 'POST':
+            d = self._corpo_json()
+            return self._json(200, {'mudaram': B.mover_pasta(db, u['id'], d.get('de'), d.get('para'))})
+        if rota == '/api/pastas/apagar' and metodo == 'POST':
+            return self._json(200, {'apagadas': B.apagar_pasta(db, u['id'], self._corpo_json().get('pasta'))})
         if m and m.group(2) and metodo == 'GET':
             return self._audio(*B.caminho_faixa(db, u['id'], int(m.group(1))))
         if m and not m.group(2) and metodo == 'PATCH':
@@ -212,7 +222,7 @@ class H(http.server.SimpleHTTPRequestHandler):
                 resta -= len(bloco)
 
 
-def importar(pasta, email=None):
+def importar(pasta, destino='', email=None):
     db = B.conectar()
     try:
         u = db.execute('SELECT * FROM usuarios WHERE email = ?', (email.lower(),)).fetchone() if email else B.usuario_local(db)
@@ -221,7 +231,9 @@ def importar(pasta, email=None):
         if not os.path.isdir(pasta):
             sys.exit(f'Pasta não encontrada: {pasta}')
         print(f'Importando de {pasta}…')
-        feitos, pulados = B.importar_pasta(db, u['id'], pasta)
+        if not B.ffmpeg():
+            print('Aviso: ffmpeg não encontrado; os WAV serão guardados sem diminuir.')
+        feitos, pulados = B.importar_pasta(db, u['id'], pasta, destino)
         print(f'Pronto: {feitos} faixa(s) nova(s), {pulados} já existiam.')
     finally:
         db.close()
@@ -229,10 +241,13 @@ def importar(pasta, email=None):
 
 if __name__ == '__main__':
     if len(sys.argv) >= 3 and sys.argv[1] == 'importar':
-        importar(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
+        importar(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else '', sys.argv[4] if len(sys.argv) > 4 else None)
         sys.exit(0)
     B.conectar().close()
-    socketserver.ThreadingTCPServer.allow_reuse_address = True
+    if sys.stdout is None or sys.stderr is None:  # aberto sem janela (pythonw, no Windows): o registro vai para um arquivo
+        sys.stdout = sys.stderr = open(os.path.join(B.DADOS, 'servidor.log'), 'a', encoding='utf-8', buffering=1)
+    # no Windows, reaproveitar o endereço deixaria dois servidores na mesma porta
+    socketserver.ThreadingTCPServer.allow_reuse_address = os.name != 'nt'
     socketserver.ThreadingTCPServer.daemon_threads = True
     with socketserver.ThreadingTCPServer((HOST, PORTA), H) as s:
         print(f'http://localhost:{PORTA}' + ('' if HOST == '127.0.0.1' else f'  (aberto na rede em {HOST})'))

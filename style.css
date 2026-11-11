@@ -478,3 +478,8 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 .rxform{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0}
 .rxform label{display:grid;gap:4px;font-weight:600;font-size:.9rem}
 .rxform input{font:inherit;padding:8px 10px;border-radius:10px;border:2px solid var(--border);background:var(--inner);color:var(--fg)}
+.rxpath{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:6px 0 10px;font-size:1.05rem}
+.rxpath button{font:inherit;background:none;border:0;color:var(--acc);cursor:pointer;padding:6px 4px;text-decoration:underline}
+.rxpath button.on{color:var(--fg);font-weight:700;text-decoration:none}
+.rxacts{margin:4px 0 10px}
+.pcard.rxfolder{border-style:dashed}

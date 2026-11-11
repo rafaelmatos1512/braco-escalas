@@ -651,7 +651,7 @@ function renderBase() {
 
 /* ---------- CONTA (login) e MINHAS GRAVAÇÕES (faixas guardadas no servidor do app) ---------- */
 const conta = { usuario: null, cadastro: false, login: false, pronto: false, msg: '', err: false, senha: false };
-state.rx = { ritmo: '', q: '', sel: null, faixas: [], ritmos: [], carregou: false, carregando: false, msg: '', err: false, edit: false, del: false, speed: 1, loop: true, up: false };
+state.rx = { pasta: '', q: '', sel: null, faixas: [], pastas: [], extras: [], carregou: false, carregando: false, msg: '', err: false, edit: false, del: false, speed: 1, loop: true, up: false, nova: false, pastaEd: false, pastaDel: false, enviando: '', parar: false, destino: '' };
 const pararGravacao = () => { const a = $('rxAudio'); if (a && !a.paused) a.pause(); };
 
 // progressões: com conta, ficam também no servidor (não somem se o navegador apagar os dados)
@@ -674,7 +674,7 @@ async function puxarProgs() {
 
 async function carregarConta() {
   const e = await api.estado();
-  conta.usuario = e.usuario; conta.cadastro = e.cadastro; conta.login = !!e.login; conta.pronto = true;
+  conta.usuario = e.usuario; conta.cadastro = e.cadastro; conta.login = !!e.login; conta.comprime = !!e.comprime; conta.pronto = true;
   $('contaBtn').hidden = !conta.login; // modo simples (sem login): o botão de conta nem aparece
   $('contaBtn').classList.toggle('on', !!conta.usuario);
   $('contaBtn').title = conta.usuario ? `Conta: ${conta.usuario.nome}` : 'Entrar na sua conta';
@@ -721,45 +721,113 @@ $('contaBtn').onclick = abrirConta;
 $('contaClose').onclick = () => { const d = $('contaDlg'); d.close ? d.close() : d.removeAttribute('open'); };
 $('contaDlg').addEventListener('click', e => { if (e.target === $('contaDlg')) $('contaClose').onclick(); });
 
-// Minhas gravações
+// Minhas gravações, organizadas em pastas (ex.: "A maior/Blues"), como no pen drive
+const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg|oga|flac|aif|aiff)$/i;
+const paiDe = p => p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
+const nomeDe = p => p.slice(p.lastIndexOf('/') + 1);
+const junta = (...ps) => ps.filter(Boolean).join('/');
+const dentro = (f, p) => !p || f.pasta === p || f.pasta.startsWith(p + '/');
+const nomeLimpo = t => t.replace(/[\\/]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 60);
 async function carregarFaixas() {
   const r = state.rx; r.carregando = true;
-  try { const d = await api.faixas(); r.faixas = d.faixas; r.ritmos = d.ritmos; r.carregou = true; if (r.sel && !r.faixas.some(f => f.id === r.sel)) r.sel = null; }
+  try {
+    const d = await api.faixas(); r.faixas = d.faixas; r.pastas = d.pastas; r.carregou = true;
+    if (r.sel && !r.faixas.some(f => f.id === r.sel)) r.sel = null;
+    r.extras = r.extras.filter(p => !r.pastas.includes(p)); // pasta criada vazia que já recebeu gravação
+  }
   catch (e) { r.msg = e.message; r.err = true; if (e.status === 401) await carregarConta(); }
   r.carregando = false;
   if (state.tab === 'base' && state.b.fonte === 'rec') renderRec();
 }
-const fxInfo = f => [f.ritmo, f.tom && 'tom ' + f.tom, f.bpm && f.bpm + ' bpm'].filter(Boolean).join(' · ') || 'sem ritmo, tom e andamento';
+const todasPastas = () => { const r = state.rx; return [...new Set([...r.pastas, ...r.extras])].sort((a, b) => a.localeCompare(b, 'pt', { numeric: true, sensitivity: 'base' })); };
+const fxInfo = (f, comPasta) => [comPasta && f.pasta && '📁 ' + f.pasta.split('/').join(' › '), f.tom && 'tom ' + f.tom, f.bpm && f.bpm + ' bpm'].filter(Boolean).join(' · ') || 'sem tom e andamento';
+const opcoesPastas = id => `<datalist id="${id}">${todasPastas().map(k => `<option value="${esc(k)}">`).join('')}</datalist>`;
 function renderRec() {
   const r = state.rx, a = $('rxAudio');
   const msg = r.msg ? `<p class="${r.err ? 'cerr' : 'cok'}" role="status">${esc(r.msg)}</p>` : '';
   if (!api.temServidor || !conta.usuario) {
     $('rxHead').innerHTML = '<div class="box">' + (!conta.pronto ? '<p>Carregando…</p>' : !api.temServidor
-      ? '<p>As gravações ficam guardadas pelo servidor do aplicativo, neste computador. Abra o app com <b>npm start</b> para usar.</p>'
-      : '<p><b>Minhas gravações:</b> guarde aqui as suas bases (backing tracks) em MP3, M4A ou WAV e toque quando quiser, separadas por ritmo.</p><p><button type="button" class="play" id="rxLogin">Entrar na conta</button></p>') + '</div>';
+      ? '<p>As gravações ficam guardadas pelo servidor do aplicativo, neste computador. Abra o app pelo atalho <b>Braço e Escalas</b> (ou <b>npm start</b>) para usar.</p>'
+      : '<p><b>Minhas gravações:</b> guarde aqui as suas bases (backing tracks) em MP3, M4A ou WAV e toque quando quiser, separadas em pastas.</p><p><button type="button" class="play" id="rxLogin">Entrar na conta</button></p>') + '</div>';
     if ($('rxLogin')) $('rxLogin').onclick = abrirConta;
     $('rxList').innerHTML = ''; $('rxPlayer').hidden = true; return;
   }
-  if (!r.carregou && !r.carregando) { carregarFaixas(); }
-  const q = fold(r.q), lista = r.faixas.filter(f => (!r.ritmo || f.ritmo === r.ritmo) && (!q || fold(f.nome + ' ' + f.ritmo + ' ' + f.tom).includes(q)));
-  const cont = k => r.faixas.filter(f => f.ritmo === k).length;
-  const ritmoBtns = r.ritmos.length > 1 || (r.ritmos.length === 1 && r.ritmos[0])
-    ? `<div class="roots preg"><b>Ritmo:</b> <button type="button" data-rt="" class="${r.ritmo ? '' : 'on'}">Todos (${r.faixas.length})</button>` +
-      r.ritmos.map(k => `<button type="button" data-rt="${esc(k)}" class="${r.ritmo === k ? 'on' : ''}">${esc(k || 'Sem ritmo')} (${cont(k)})</button>`).join('') + '</div>' : '';
-  $('rxHead').innerHTML = `<div class="rxbar"><input id="rxQ" type="search" placeholder="Buscar: nome, ritmo ou tom" value="${esc(r.q)}" autocomplete="off"><button type="button" class="play" id="rxAdd">+ Acrescentar gravações</button></div>` +
-    (r.up ? `<div class="box"><p><b>Acrescentar gravações</b></p><div class="rxform"><label>Ritmo destas gravações<input id="rxUpRitmo" list="rxRitmos" maxlength="40" value="${esc(r.ritmo)}" placeholder="Ex.: Blues"></label></div>` +
-      `<datalist id="rxRitmos">${r.ritmos.filter(Boolean).map(k => `<option value="${esc(k)}">`).join('')}</datalist>` +
-      '<p class="hint">Pode escolher várias de uma vez, do computador ou do pen drive. Se o nome do arquivo tiver o tom e o andamento (ex.: <i>Blues em A 90bpm.mp3</i>), o app preenche sozinho.</p>' +
-      '<div class="dlg-actions"><button type="button" class="play" id="rxPick">Escolher os arquivos</button><button type="button" class="link" id="rxUpNo">Cancelar</button></div></div>' : '') +
-    msg + ritmoBtns + (r.carregou && !r.faixas.length ? '<p class="hint">Você ainda não guardou nenhuma gravação. Toque em <b>+ Acrescentar gravações</b>.</p>' : '') +
-    (r.carregou && r.faixas.length && !lista.length ? '<p class="hint">Nenhuma gravação com essa busca.</p>' : '');
+  if (!r.carregou && !r.carregando) carregarFaixas();
+  const cur = r.pasta, todas = todasPastas();
+  if (cur && !todas.includes(cur) && r.carregou) r.pasta = '';
+  const q = fold(r.q), busca = !!q;
+  const lista = busca ? r.faixas.filter(f => fold(f.nome + ' ' + f.pasta + ' ' + f.tom).includes(q)) : r.faixas.filter(f => f.pasta === r.pasta);
+  const subs = busca ? [] : todas.filter(p => paiDe(p) === r.pasta);
+  const conta_ = p => r.faixas.filter(f => dentro(f, p)).length;
+  const aqui = r.pasta ? r.pasta.split('/').join(' › ') : 'Início (fora das pastas)';
+  const caminho = '<nav class="rxpath" aria-label="Pasta atual"><button type="button" data-ir="">Início</button>' +
+    (r.pasta ? r.pasta.split('/').map((n, i, arr) => ` › <button type="button" data-ir="${esc(arr.slice(0, i + 1).join('/'))}" ${i === arr.length - 1 ? 'class="on" aria-current="true"' : ''}>${esc(n)}</button>`).join('') : '') + '</nav>';
+  let painel = '';
+  if (r.enviando) painel = `<div class="box"><p><b>${esc(r.enviando)}</b></p><p class="hint">Arquivos WAV são diminuídos ao guardar; cada um leva alguns segundos.</p><div class="dlg-actions"><button type="button" class="link danger" id="rxStop">Parar de acrescentar</button></div></div>`;
+  else if (r.up) painel = `<div class="box"><p><b>Acrescentar gravações</b></p><p>Vão para: <b>📁 ${esc(aqui)}</b></p>` +
+    '<p class="hint">Para guardar em outra pasta, feche isto, abra a pasta e toque em <b>+ Acrescentar</b> lá dentro.</p>' +
+    '<div class="dlg-actions"><button type="button" class="play" id="rxPick">Escolher arquivos</button><button type="button" class="play" id="rxPickDir">Escolher uma pasta inteira</button><button type="button" class="link" id="rxUpNo">Cancelar</button></div>' +
+    '<p class="hint">Pode escolher vários arquivos de uma vez, do computador ou do pen drive. <b>Pasta inteira</b> traz também as pastas de dentro, do mesmo jeito que estão (ex.: o tom e, dentro dele, o ritmo). O que já foi guardado não se repete.</p>' +
+    (conta.comprime ? '<p class="hint">Arquivos WAV ficam bem menores ao guardar (uns 15 vezes), sem perder qualidade que dê para ouvir.</p>' : '<p class="hint">Aviso: este computador não tem o programa que diminui os WAV (ffmpeg). Eles serão guardados do tamanho original.</p>') + '</div>';
+  else if (r.nova) painel = `<div class="box"><p><b>Nova pasta</b> dentro de <b>📁 ${esc(aqui)}</b></p><div class="rxform"><label>Nome da pasta<input id="rxNovaN" maxlength="60" placeholder="Ex.: Blues"></label></div>` +
+    '<div class="dlg-actions"><button type="button" class="play" id="rxNovaOk">Criar</button><button type="button" class="link" id="rxNovaNo">Cancelar</button></div></div>';
+  else if (r.pastaEd) painel = `<div class="box"><p><b>Mudar o nome da pasta</b></p><div class="rxform"><label>Nome<input id="rxPN" maxlength="60" value="${esc(nomeDe(r.pasta))}"></label>` +
+    `<label>Fica dentro de<input id="rxPP" list="rxPastasP" maxlength="200" value="${esc(paiDe(r.pasta))}" placeholder="Início (fora das pastas)"></label></div>${opcoesPastas('rxPastasP')}` +
+    '<p class="hint">Deixe "Fica dentro de" vazio para ela ficar no Início.</p><div class="dlg-actions"><button type="button" class="play" id="rxPOk">Guardar</button><button type="button" class="link" id="rxPNo">Cancelar</button></div></div>';
+  const delP = r.pastaDel; r.pastaDel = false;
+  const acoesPasta = r.pasta && !busca && !painel ? `<p class="rxacts"><button type="button" class="link" id="rxPEd">Mudar o nome ou o lugar desta pasta</button> <button type="button" class="link danger" id="rxPDel">${delP ? `Toque de novo para apagar a pasta e as ${conta_(r.pasta)} gravação(ões) dela` : 'Apagar esta pasta'}</button></p>` : '';
+  const vazio = r.carregou && !r.faixas.length && !r.extras.length ? '<p class="hint">Você ainda não guardou nenhuma gravação. Toque em <b>+ Acrescentar</b> para trazer do pen drive ou do computador.</p>'
+    : r.carregou && !busca && !subs.length && !lista.length ? '<p class="hint">Esta pasta está vazia. Toque em <b>+ Acrescentar</b> para pôr gravações nela.</p>'
+    : busca && !lista.length ? '<p class="hint">Nenhuma gravação com essa busca.</p>' : '';
+  $('rxHead').innerHTML = `<div class="rxbar"><input id="rxQ" type="search" placeholder="Buscar em todas as pastas: nome, pasta ou tom" value="${esc(r.q)}" autocomplete="off">` +
+    `<button type="button" class="play" id="rxAdd" ${r.enviando ? 'disabled' : ''}>+ Acrescentar</button><button type="button" class="play" id="rxNova" ${r.enviando ? 'disabled' : ''}>+ Nova pasta</button></div>` +
+    (busca ? '' : caminho) + painel + msg + acoesPasta + vazio;
   $('rxQ').oninput = e => { r.q = e.target.value; const pos = e.target.selectionStart; renderRec(); $('rxQ').focus(); $('rxQ').setSelectionRange(pos, pos); };
-  $('rxAdd').onclick = () => { r.up = !r.up; r.msg = ''; renderRec(); };
+  const fecha = () => { r.up = r.nova = r.pastaEd = false; };
+  $('rxAdd').onclick = () => { const v = !r.up; fecha(); r.up = v; r.msg = ''; renderRec(); };
+  $('rxNova').onclick = () => { const v = !r.nova; fecha(); r.nova = v; r.msg = ''; renderRec(); if (v) $('rxNovaN').focus(); };
+  $('rxHead').querySelectorAll('[data-ir]').forEach(x => x.onclick = () => { r.pasta = x.dataset.ir; fecha(); r.msg = ''; renderRec(); });
+  if ($('rxStop')) $('rxStop').onclick = () => { r.parar = true; };
   if ($('rxUpNo')) $('rxUpNo').onclick = () => { r.up = false; renderRec(); };
-  if ($('rxPick')) $('rxPick').onclick = () => { r.upRitmo = $('rxUpRitmo').value.trim(); $('rxFile').value = ''; $('rxFile').click(); };
-  $('rxHead').querySelectorAll('[data-rt]').forEach(x => x.onclick = () => { r.ritmo = x.dataset.rt; renderRec(); });
-  $('rxList').innerHTML = lista.map(f => `<button type="button" class="pcard ${f.id === r.sel ? 'active' : ''}" data-id="${f.id}"><b>${esc(f.nome)}</b><span>${esc(fxInfo(f))}</span></button>`).join('');
-  $('rxList').querySelectorAll('.pcard').forEach(x => x.onclick = () => {
+  if ($('rxPick')) $('rxPick').onclick = () => { r.destino = r.pasta; $('rxFile').value = ''; $('rxFile').click(); };
+  if ($('rxPickDir')) $('rxPickDir').onclick = () => { r.destino = r.pasta; $('rxDir').value = ''; $('rxDir').click(); };
+  if ($('rxNovaNo')) $('rxNovaNo').onclick = () => { r.nova = false; renderRec(); };
+  if ($('rxNovaOk')) {
+    const criar = () => {
+      const n = nomeLimpo($('rxNovaN').value); if (!n) { $('rxNovaN').focus(); return; }
+      const p = junta(r.pasta, n);
+      if (p.split('/').length > 6) { r.msg = 'Pastas demais, uma dentro da outra (no máximo 6).'; r.err = true; r.nova = false; renderRec(); return; }
+      if (!todasPastas().includes(p)) r.extras.push(p);
+      r.pasta = p; r.nova = false; r.up = true; r.msg = 'Pasta criada. Agora escolha as gravações que vão para ela.'; r.err = false; renderRec();
+    };
+    $('rxNovaOk').onclick = criar; $('rxNovaN').onkeydown = e => { if (e.key === 'Enter') criar(); };
+  }
+  if ($('rxPEd')) $('rxPEd').onclick = () => { fecha(); r.pastaEd = true; r.msg = ''; renderRec(); $('rxPN').focus(); };
+  if ($('rxPNo')) $('rxPNo').onclick = () => { r.pastaEd = false; renderRec(); };
+  if ($('rxPOk')) $('rxPOk').onclick = async () => {
+    const n = nomeLimpo($('rxPN').value); if (!n) { $('rxPN').focus(); return; }
+    const de = r.pasta, para = junta($('rxPP').value.split(/[\\/]+/).map(x => x.trim()).filter(Boolean).join('/'), n);
+    try {
+      if (r.pastas.some(p => p === de || p.startsWith(de + '/'))) await api.moverPasta(de, para);
+      r.extras = r.extras.map(p => p === de || p.startsWith(de + '/') ? para + p.slice(de.length) : p);
+      r.pasta = para; r.pastaEd = false; r.msg = 'Pasta guardada.'; r.err = false; await carregarFaixas();
+    } catch (e) { r.msg = e.message; r.err = true; renderRec(); }
+  };
+  if ($('rxPDel')) $('rxPDel').onclick = async () => {
+    if (!delP) { r.pastaDel = true; renderRec(); return; }
+    const p = r.pasta;
+    try {
+      const temFaixa = r.faixas.some(f => dentro(f, p));
+      if (temFaixa) await api.apagarPasta(p);
+      r.extras = r.extras.filter(x => !(x === p || x.startsWith(p + '/')));
+      if (r.sel && r.faixas.some(f => f.id === r.sel && dentro(f, p))) r.sel = null;
+      r.pasta = paiDe(p); r.msg = 'Pasta apagada.'; r.err = false; await carregarFaixas();
+    } catch (e) { r.msg = e.message; r.err = true; renderRec(); }
+  };
+  $('rxList').innerHTML = subs.map(p => `<button type="button" class="pcard rxfolder" data-p="${esc(p)}"><b>📁 ${esc(nomeDe(p))}</b><span>${conta_(p)} gravação(ões)</span></button>`).join('') +
+    lista.map(f => `<button type="button" class="pcard ${f.id === r.sel ? 'active' : ''}" data-id="${f.id}"><b>${esc(f.nome)}</b><span>${esc(fxInfo(f, busca))}</span></button>`).join('');
+  $('rxList').querySelectorAll('[data-p]').forEach(x => x.onclick = () => { r.pasta = x.dataset.p; fecha(); r.msg = ''; renderRec(); tabJump = true; $('rxHead').scrollIntoView({ block: 'nearest' }); });
+  $('rxList').querySelectorAll('[data-id]').forEach(x => x.onclick = () => {
     const id = +x.dataset.id; if (r.sel !== id) { r.sel = id; r.edit = r.del = false; a.src = api.audioUrl(id); stopBase(); a.play().catch(() => {}); }
     renderRec(); $('rxPlayer').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); tabJump = true;
   });
@@ -767,22 +835,22 @@ function renderRec() {
   $('rxPlayer').hidden = !f;
   if (!f) { if (a.src) { a.pause(); a.removeAttribute('src'); a.load(); } return; }
   a.loop = r.loop; a.playbackRate = r.speed; a.preservesPitch = a.webkitPreservesPitch = true; // mais lento sem mudar o tom
-  $('rxInfo').innerHTML = `<p><b class="big">${esc(f.nome)}</b></p><p>${esc(fxInfo(f))}</p>`;
+  $('rxInfo').innerHTML = `<p><b class="big">${esc(f.nome)}</b></p><p>${esc(fxInfo(f, true))}</p>`;
   const delArm = r.del; r.del = false;
   $('rxCtl').innerHTML = `<div class="roots preg"><b>Velocidade:</b> ${[[0.5, 'Bem lenta'], [0.75, 'Lenta'], [1, 'Normal'], [1.25, 'Rápida']].map(([v, l]) => `<button type="button" data-sp="${v}" class="${r.speed === v ? 'on' : ''}">${l}</button>`).join('')}</div>` +
     `<div class="roots preg"><b>Repetir:</b> <button type="button" data-lp="1" class="${r.loop ? 'on' : ''}">Sem parar</button><button type="button" data-lp="0" class="${r.loop ? '' : 'on'}">Uma vez</button></div>` +
     '<p class="hint">Mais lenta não muda o tom: bom para estudar um trecho difícil.</p>' +
-    (r.edit ? `<div class="rxform"><label>Nome<input id="rxN" maxlength="120" value="${esc(f.nome)}"></label><label>Ritmo<input id="rxR" list="rxRitmos2" maxlength="40" value="${esc(f.ritmo)}"></label>` +
+    (r.edit ? `<div class="rxform"><label>Nome<input id="rxN" maxlength="120" value="${esc(f.nome)}"></label><label>Pasta<input id="rxR" list="rxPastas2" maxlength="200" value="${esc(f.pasta)}" placeholder="Início (fora das pastas)"></label>` +
       `<label>Tom (ex.: A, F#, Em)<input id="rxT" maxlength="4" value="${esc(f.tom)}"></label><label>Andamento (bpm)<input id="rxB" type="number" min="30" max="300" inputmode="numeric" value="${f.bpm || ''}"></label></div>` +
-      `<datalist id="rxRitmos2">${r.ritmos.filter(Boolean).map(k => `<option value="${esc(k)}">`).join('')}</datalist>` +
+      opcoesPastas('rxPastas2') + '<p class="hint">Para mudar de pasta, escolha uma da lista ou escreva o nome de uma nova (use / para pôr dentro de outra: <i>A maior/Blues</i>).</p>' +
       '<div class="dlg-actions"><button type="button" class="play" id="rxSave">Guardar</button><button type="button" class="link" id="rxEditNo">Cancelar</button></div>'
-      : `<p><button type="button" class="link" id="rxEdit">Mudar nome, ritmo, tom ou andamento</button> <button type="button" class="link danger" id="rxDel">${delArm ? 'Toque de novo para apagar de vez' : 'Apagar esta gravação'}</button></p>`);
+      : `<p><button type="button" class="link" id="rxEdit">Mudar nome, pasta, tom ou andamento</button> <button type="button" class="link danger" id="rxDel">${delArm ? 'Toque de novo para apagar de vez' : 'Apagar esta gravação'}</button></p>`);
   $('rxCtl').querySelectorAll('[data-sp]').forEach(x => x.onclick = () => { r.speed = +x.dataset.sp; renderRec(); });
   $('rxCtl').querySelectorAll('[data-lp]').forEach(x => x.onclick = () => { r.loop = x.dataset.lp === '1'; renderRec(); });
   if ($('rxEdit')) $('rxEdit').onclick = () => { r.edit = true; renderRec(); };
   if ($('rxEditNo')) $('rxEditNo').onclick = () => { r.edit = false; renderRec(); };
   if ($('rxSave')) $('rxSave').onclick = async () => {
-    try { await api.mudarFaixa(f.id, { nome: $('rxN').value, ritmo: $('rxR').value, tom: $('rxT').value.trim(), bpm: $('rxB').value }); r.edit = false; r.msg = 'Guardado.'; r.err = false; await carregarFaixas(); }
+    try { await api.mudarFaixa(f.id, { nome: $('rxN').value, pasta: $('rxR').value, tom: $('rxT').value.trim(), bpm: $('rxB').value }); r.edit = false; r.msg = 'Guardado.'; r.err = false; await carregarFaixas(); }
     catch (e) { r.msg = e.message; r.err = true; renderRec(); }
   };
   if ($('rxDel')) $('rxDel').onclick = async () => {
@@ -791,18 +859,28 @@ function renderRec() {
     catch (e) { r.msg = e.message; r.err = true; renderRec(); }
   };
 }
-$('rxFile').onchange = async e => {
-  const r = state.rx, arqs = [...e.target.files];
-  if (!arqs.length) return;
-  r.up = false; let ok = 0; const erros = [];
-  for (let i = 0; i < arqs.length; i++) {
-    r.msg = `Enviando ${i + 1} de ${arqs.length}: ${arqs[i].name}…`; r.err = false; renderRec();
-    try { await api.enviarFaixa(arqs[i], r.upRitmo); ok++; } catch (err) { erros.push(`${arqs[i].name}: ${err.message}`); }
+// arquivos soltos (rxFile) ou uma pasta inteira com as de dentro (rxDir: cada arquivo traz o caminho relativo)
+async function acrescentar(lista) {
+  const r = state.rx;
+  const arqs = [...lista].filter(f => AUDIO_EXT.test(f.name) && !f.name.startsWith('.'));
+  r.up = false;
+  if (!arqs.length) { r.msg = 'Não achei nenhum arquivo de áudio (MP3, M4A, WAV…) no que você escolheu.'; r.err = true; renderRec(); return; }
+  let ok = 0, rep = 0; const erros = []; r.parar = false;
+  for (let i = 0; i < arqs.length && !r.parar; i++) {
+    const f = arqs[i], rel = f.webkitRelativePath || '';
+    const pasta = junta(r.destino, rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '');
+    if (r.faixas.some(x => x.pasta === pasta && x.origem === f.name && x.original === f.size)) { rep++; continue; }
+    r.enviando = `Guardando ${i + 1} de ${arqs.length}: ${f.name}`; r.msg = ''; renderRec();
+    try { const x = await api.enviarFaixa(f, pasta); if (x.repetida) rep++; else { ok++; r.faixas.push(x); } }
+    catch (err) { erros.push(`${f.name}: ${err.message}`); if (err.status === 0) break; }
   }
-  r.msg = `${ok} gravação(ões) guardada(s).` + (erros.length ? ' Não deu certo: ' + erros.join(' · ') : ''); r.err = !!erros.length;
-  if (r.upRitmo) r.ritmo = r.upRitmo;
+  r.enviando = '';
+  r.msg = (r.parar ? 'Parado. ' : '') + `${ok} gravação(ões) guardada(s).` + (rep ? ` ${rep} já estava(m) guardada(s).` : '') + (erros.length ? ' Não deu certo: ' + erros.join(' · ') : '');
+  r.err = !!erros.length; r.parar = false;
   await carregarFaixas();
-};
+}
+$('rxFile').onchange = e => acrescentar(e.target.files);
+$('rxDir').onchange = e => acrescentar(e.target.files);
 $('rxAudio').addEventListener('play', () => stopBase());
 
 /* ---------- ABA ESCALAS ---------- */
