@@ -651,7 +651,7 @@ function renderBase() {
 
 /* ---------- CONTA (login) e MINHAS GRAVAÇÕES (faixas guardadas no servidor do app) ---------- */
 const conta = { usuario: null, cadastro: false, login: false, pronto: false, msg: '', err: false, senha: false };
-state.rx = { pasta: '', q: '', sel: null, faixas: [], pastas: [], extras: [], carregou: false, carregando: false, msg: '', err: false, edit: false, del: false, speed: 1, loop: true, up: false, nova: false, pastaEd: false, pastaDel: false, enviando: '', parar: false, destino: '' };
+state.rx = { pasta: '', q: '', sel: null, faixas: [], pastas: [], extras: [], carregou: false, carregando: false, msg: '', err: false, edit: false, del: false, speed: 1, loop: true, nova: false, pastaEd: false, pastaDel: false, enviando: '', parar: false, destino: '' };
 const pararGravacao = () => { const a = $('rxAudio'); if (a && !a.paused) a.pause(); };
 
 // progressões: com conta, ficam também no servidor (não somem se o navegador apagar os dados)
@@ -764,11 +764,6 @@ function renderRec() {
     (r.pasta ? r.pasta.split('/').map((n, i, arr) => ` › <button type="button" data-ir="${esc(arr.slice(0, i + 1).join('/'))}" ${i === arr.length - 1 ? 'class="on" aria-current="true"' : ''}>${esc(n)}</button>`).join('') : '') + '</nav>';
   let painel = '';
   if (r.enviando) painel = `<div class="box"><p><b>${esc(r.enviando)}</b></p><p class="hint">Arquivos WAV são diminuídos ao guardar; cada um leva alguns segundos.</p><div class="dlg-actions"><button type="button" class="link danger" id="rxStop">Parar de acrescentar</button></div></div>`;
-  else if (r.up) painel = `<div class="box"><p><b>Acrescentar gravações</b></p><p>Vão para: <b>📁 ${esc(aqui)}</b></p>` +
-    '<p class="hint">Para guardar em outra pasta, feche isto, abra a pasta e toque em <b>+ Acrescentar</b> lá dentro.</p>' +
-    '<div class="dlg-actions"><button type="button" class="play" id="rxPick">Escolher arquivos</button><button type="button" class="play" id="rxPickDir">Escolher uma pasta inteira</button><button type="button" class="link" id="rxUpNo">Cancelar</button></div>' +
-    '<p class="hint">Pode escolher vários arquivos de uma vez, do computador ou do pen drive. <b>Pasta inteira</b> traz também as pastas de dentro, do mesmo jeito que estão (ex.: o tom e, dentro dele, o ritmo). O que já foi guardado não se repete.</p>' +
-    (conta.comprime ? '<p class="hint">Arquivos WAV ficam bem menores ao guardar (uns 15 vezes), sem perder qualidade que dê para ouvir.</p>' : '<p class="hint">Aviso: este computador não tem o programa que diminui os WAV (ffmpeg). Eles serão guardados do tamanho original.</p>') + '</div>';
   else if (r.nova) painel = `<div class="box"><p><b>Nova pasta</b> dentro de <b>📁 ${esc(aqui)}</b></p><div class="rxform"><label>Nome da pasta<input id="rxNovaN" maxlength="60" placeholder="Ex.: Blues"></label></div>` +
     '<div class="dlg-actions"><button type="button" class="play" id="rxNovaOk">Criar</button><button type="button" class="link" id="rxNovaNo">Cancelar</button></div></div>';
   else if (r.pastaEd) painel = `<div class="box"><p><b>Mudar o nome da pasta</b></p><div class="rxform"><label>Nome<input id="rxPN" maxlength="60" value="${esc(nomeDe(r.pasta))}"></label>` +
@@ -776,21 +771,22 @@ function renderRec() {
     '<p class="hint">Deixe "Fica dentro de" vazio para ela ficar no Início.</p><div class="dlg-actions"><button type="button" class="play" id="rxPOk">Guardar</button><button type="button" class="link" id="rxPNo">Cancelar</button></div></div>';
   const delP = r.pastaDel; r.pastaDel = false;
   const acoesPasta = r.pasta && !busca && !painel ? `<p class="rxacts"><button type="button" class="link" id="rxPEd">Mudar o nome ou o lugar desta pasta</button> <button type="button" class="link danger" id="rxPDel">${delP ? `Toque de novo para apagar a pasta e as ${conta_(r.pasta)} gravação(ões) dela` : 'Apagar esta pasta'}</button></p>` : '';
-  const vazio = r.carregou && !r.faixas.length && !r.extras.length ? '<p class="hint">Você ainda não guardou nenhuma gravação. Toque em <b>+ Acrescentar</b> para trazer do pen drive ou do computador.</p>'
-    : r.carregou && !busca && !subs.length && !lista.length ? '<p class="hint">Esta pasta está vazia. Toque em <b>+ Acrescentar</b> para pôr gravações nela.</p>'
+  const vazio = r.carregou && !r.faixas.length && !r.extras.length ? '<p class="hint">Você ainda não guardou nenhuma gravação. Toque em <b>+ Adicionar backing tracks</b> para trazer do pen drive ou do computador.</p>'
+    : r.carregou && !busca && !subs.length && !lista.length ? '<p class="hint">Esta pasta está vazia. Toque em <b>+ Adicionar backing tracks</b> para pôr gravações nela.</p>'
     : busca && !lista.length ? '<p class="hint">Nenhuma gravação com essa busca.</p>' : '';
   $('rxHead').innerHTML = `<div class="rxbar"><input id="rxQ" type="search" placeholder="Buscar em todas as pastas: nome, pasta ou tom" value="${esc(r.q)}" autocomplete="off">` +
-    `<button type="button" class="play" id="rxAdd" ${r.enviando ? 'disabled' : ''}>+ Acrescentar</button><button type="button" class="play" id="rxNova" ${r.enviando ? 'disabled' : ''}>+ Nova pasta</button></div>` +
+    `<button type="button" class="play" id="rxAdd" ${r.enviando ? 'disabled' : ''}>+ Adicionar backing tracks</button><button type="button" class="play" id="rxNova" ${r.enviando ? 'disabled' : ''}>+ Nova pasta</button></div>` +
+    (busca || r.enviando ? '' : `<p class="hint">Toque em <b>+ Adicionar backing tracks</b> e escolha uma pasta do pen drive ou do computador: vem tudo o que tem dentro, com as pastas do mesmo jeito. Entra em <b>📁 ${esc(aqui)}</b>. ` +
+      '<button type="button" class="link" id="rxPick">Prefiro escolher arquivos soltos</button></p>' +
+      (!conta.comprime ? '<p class="hint">Aviso: falta o programa que diminui os WAV (ffmpeg); eles serão guardados do tamanho original.</p>' : '')) +
     (busca ? '' : caminho) + painel + msg + acoesPasta + vazio;
   $('rxQ').oninput = e => { r.q = e.target.value; const pos = e.target.selectionStart; renderRec(); $('rxQ').focus(); $('rxQ').setSelectionRange(pos, pos); };
-  const fecha = () => { r.up = r.nova = r.pastaEd = false; };
-  $('rxAdd').onclick = () => { const v = !r.up; fecha(); r.up = v; r.msg = ''; renderRec(); };
+  const fecha = () => { r.nova = r.pastaEd = false; };
+  $('rxAdd').onclick = () => { fecha(); r.msg = ''; r.destino = r.pasta; $('rxDir').value = ''; $('rxDir').click(); };
   $('rxNova').onclick = () => { const v = !r.nova; fecha(); r.nova = v; r.msg = ''; renderRec(); if (v) $('rxNovaN').focus(); };
   $('rxHead').querySelectorAll('[data-ir]').forEach(x => x.onclick = () => { r.pasta = x.dataset.ir; fecha(); r.msg = ''; renderRec(); });
   if ($('rxStop')) $('rxStop').onclick = () => { r.parar = true; };
-  if ($('rxUpNo')) $('rxUpNo').onclick = () => { r.up = false; renderRec(); };
-  if ($('rxPick')) $('rxPick').onclick = () => { r.destino = r.pasta; $('rxFile').value = ''; $('rxFile').click(); };
-  if ($('rxPickDir')) $('rxPickDir').onclick = () => { r.destino = r.pasta; $('rxDir').value = ''; $('rxDir').click(); };
+  if ($('rxPick')) $('rxPick').onclick = () => { fecha(); r.msg = ''; r.destino = r.pasta; $('rxFile').value = ''; $('rxFile').click(); };
   if ($('rxNovaNo')) $('rxNovaNo').onclick = () => { r.nova = false; renderRec(); };
   if ($('rxNovaOk')) {
     const criar = () => {
@@ -798,7 +794,7 @@ function renderRec() {
       const p = junta(r.pasta, n);
       if (p.split('/').length > 6) { r.msg = 'Pastas demais, uma dentro da outra (no máximo 6).'; r.err = true; r.nova = false; renderRec(); return; }
       if (!todasPastas().includes(p)) r.extras.push(p);
-      r.pasta = p; r.nova = false; r.up = true; r.msg = 'Pasta criada. Agora escolha as gravações que vão para ela.'; r.err = false; renderRec();
+      r.pasta = p; r.nova = false; r.msg = 'Pasta criada. Agora toque em + Adicionar backing tracks para pôr gravações nela.'; r.err = false; renderRec();
     };
     $('rxNovaOk').onclick = criar; $('rxNovaN').onkeydown = e => { if (e.key === 'Enter') criar(); };
   }
@@ -863,7 +859,6 @@ function renderRec() {
 async function acrescentar(lista) {
   const r = state.rx;
   const arqs = [...lista].filter(f => AUDIO_EXT.test(f.name) && !f.name.startsWith('.'));
-  r.up = false;
   if (!arqs.length) { r.msg = 'Não achei nenhum arquivo de áudio (MP3, M4A, WAV…) no que você escolheu.'; r.err = true; renderRec(); return; }
   let ok = 0, rep = 0; const erros = []; r.parar = false;
   for (let i = 0; i < arqs.length && !r.parar; i++) {

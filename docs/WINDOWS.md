@@ -74,9 +74,9 @@ Regras:
 Escolha **um** dos dois:
 
 - **Pelo app** (a própria pessoa consegue fazer depois):
-  aba **Base** > **Minhas gravações** > **+ Acrescentar** > **Escolher uma pasta inteira** > escolha a pasta de um tom no pen drive
-  (ex.: `11 - B. T. EM - A MAIOR`). As pastas de dentro (Blues, Pop…) vêm junto.
-  Para guardar dentro de uma pasta, abra a pasta antes de tocar em **+ Acrescentar**.
+  aba **Base** > **Minhas gravações** > **+ Adicionar backing tracks** > escolha a pasta no pen drive
+  (ex.: `11 - B. T. EM - A MAIOR`, ou o pen drive inteiro) > **Enviar** no aviso do Chrome.
+  As pastas de dentro (Blues, Pop…) vêm junto. Para guardar dentro de uma pasta do app, abra a pasta antes.
 - **Tudo de uma vez** (mais rápido para o pen drive inteiro):
   ```
   %USERPROFILE%\braco-escalas\windows\importar.bat "E:\" "Pen drive"
