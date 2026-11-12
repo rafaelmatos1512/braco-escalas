@@ -145,6 +145,23 @@ class Funcoes(unittest.TestCase):
         self.assertEqual(B.importar_pasta(self.db, a, pen, destino='Pen', avisar=lambda m: None), (2, 0))
         self.assertIn('Pen/A maior/Blues', B.listar_faixas(self.db, a)['pastas'])
 
+    def test_nomes_do_pen_drive_ficam_arrumados(self):
+        self.assertEqual(B.dados_do_nome('01 - Guitar Backing Tracks - Massive Rock Funk Guitar Backing Track in Em 120 BPM-Em-120bpm-441hz- BTGB.wav'),
+                         ('Massive Rock Funk in Em 120 BPM (BTGB)', 'Em', 120))
+        self.assertEqual(B.dados_do_nome('02 - Jazz Bossa Nova Covers-D-120bpm-440hz - BTSV.mp3'), ('Jazz Bossa Nova Covers (BTSV)', 'D', 120))
+        self.assertEqual(B.dados_do_nome('01.mp3')[0], '01')  # nunca fica sem nome
+        for de, para in (('06 - B. T. EM - E MENOR', 'E menor'), ('05 -POP', 'Pop'), ('15 - B. T. EM - C# - Db MAIOR', 'C# / Db maior'),
+                         ('16 - B. T. EM - C#- Db MENOR', 'C# / Db menor'), ('02 - BLUES& FUNK', 'Blues & Funk'),
+                         ('11 - MPB & ROMANTICA & SERESTA', 'MPB & Romantica & Seresta'), ('10 - FORRÓ & BAIÃO', 'Forró & Baião'),
+                         ('Djavan', 'Djavan'), ('A maior', 'A maior')):
+            self.assertEqual(B.pasta_bonita(de), para)
+        self.assertEqual(B.caminho_bonito('06 - B. T. EM - E MENOR/05 -POP'), 'E menor/Pop')
+
+    def test_sub_vira_pasta_arrumada_dentro_do_destino(self):
+        a = B.usuario_local(self.db)['id']
+        f = B.guardar_faixa(self.db, a, 'x.mp3', _leitor(b'ID3abc'), 6, pasta='Pen drive', sub='12 - B. T. EM - A MENOR/06 - ROCK')
+        self.assertEqual(f['pasta'], 'Pen drive/A menor/Rock')
+
     def test_pasta_limpa(self):
         self.assertEqual(B._pasta(' A maior \\ Blues/ '), 'A maior/Blues')
         self.assertEqual(B._pasta('../../etc/./x'), 'etc/x')

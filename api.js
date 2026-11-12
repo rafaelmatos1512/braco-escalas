@@ -26,8 +26,9 @@ export const trocarSenha = (atual, nova) => req('POST', '/api/senha', { atual, n
 
 export const faixas = () => req('GET', '/api/faixas');
 // `pasta` = onde guardar, com '/' entre as pastas ('A maior/Blues'). WAV é diminuído pelo servidor.
-export function enviarFaixa(arquivo, pasta) {
-  const q = new URLSearchParams({ arquivo: arquivo.name, pasta: pasta || '' });
+// `sub` = pastas que vieram junto (pasta inteira do pen drive); o servidor arruma o nome delas.
+export function enviarFaixa(arquivo, pasta, sub) {
+  const q = new URLSearchParams({ arquivo: arquivo.name, pasta: pasta || '', sub: sub || '' });
   return req('POST', '/api/faixas?' + q, arquivo, { 'Content-Type': arquivo.type || 'application/octet-stream' });
 }
 export const moverPasta = (de, para) => req('POST', '/api/pastas/mover', { de, para });

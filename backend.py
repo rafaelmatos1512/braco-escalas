@@ -213,6 +213,7 @@ _TOM_CHAVE = re.compile(r'(?:\b(?:em|in|tom|key(?:\s+of)?)\s+)(' + NOTAS + r')\s
 _TOM_SOLTO = re.compile(r'[\(\[](' + NOTAS + r')(m|min|minor)?[\)\]]|(?<![\w#])([A-G](?:#|b|♯|♭))(m|min|minor)?(?![\w#])|(?<![\w#])([A-G])(m|min|minor)(?![\w#])')
 _TOM_PALAVRA = re.compile(r'(?<![\w#])([A-G](?:#|b)?)\s+(minor|major|menor|maior)\b', re.I)  # 'E Minor Blues'
 _BPM = re.compile(r'(\d{2,3})\s*bpm', re.I)
+_MARCA = re.compile(r'-([A-G](?:#|b)?m?)-(\d{2,3})bpm-\d+hz')
 
 
 def dados_do_nome(arquivo):
@@ -224,7 +225,11 @@ def dados_do_nome(arquivo):
     if m and 40 <= int(m.group(1)) <= 260:
         bpm = int(m.group(1))
     tom = ''
-    m = _TOM_CHAVE.search(base) or _TOM_PALAVRA.search(base) or _TOM_SOLTO.search(base)
+    p = _MARCA.search(base)  # marca de programa '-D-120bpm-440hz' traz o tom certo
+    if p:
+        tom = p.group(1)
+        bpm = bpm or int(p.group(2))
+    m = None if tom else (_TOM_CHAVE.search(base) or _TOM_PALAVRA.search(base) or _TOM_SOLTO.search(base))
     if m:
         g = [x for x in m.groups()]
         i = next(k for k in range(0, len(g), 2) if g[k])  # o par (nota, menor) que casou
@@ -232,7 +237,52 @@ def dados_do_nome(arquivo):
         nota = nota[0].upper() + nota[1:].replace('♯', '#').replace('♭', 'b')
         menor = suf and suf.lower() in ('m', 'min', 'minor', 'menor')
         tom = nota + ('m' if menor else '')
-    return nome[:120], tom, bpm
+    return nome_limpo(nome)[:120], tom, bpm
+
+
+def nome_limpo(base):
+    """Tira do nome o que só atrapalha (numeração, 'Guitar Backing Tracks -', marcas de programa):
+    '01 - Guitar Backing Tracks - Rock Funk Guitar Backing Track in Em 120 BPM-Em-120bpm-441hz- BTGB'
+    -> 'Rock Funk in Em 120 BPM (BTGB)'. Tom e andamento são lidos antes, do nome original."""
+    n = base
+    cod = re.search(r'[\s-]+(BT[A-Z]{2})\s*$', n)  # versão do arquivo (BTGB, BTGS…), vai para o fim entre parênteses
+    if cod:
+        n = n[:cod.start()]
+    n = re.sub(r'-[A-G][#b]?m?-\d{2,3}bpm-\d+hz-?', ' ', n, flags=re.I)  # marca de programa: -Em-120bpm-441hz-
+    n = re.sub(r'^\s*\d{1,3}\s*[-.)]\s*', '', n)  # numeração do começo: '01 - '
+    n = re.sub(r'^\s*guitar\s+backing\s+tracks?\s*-\s*', '', n, flags=re.I)  # nome do canal
+    n = re.sub(r'\s*\b(?:guitar\s+)?backing\s+track\b\s*', ' ', n, flags=re.I)
+    n = re.sub(r'\s+', ' ', n).strip(' -')
+    if not n:
+        n = base.strip() or 'Faixa'
+    return n + (f' ({cod.group(1)})' if cod else '')
+
+
+_MAIUSCULAS = {'MPB', 'BPM', 'TV', 'DJ'}
+_MINUSCULAS = {'E', 'DE', 'DA', 'DO', 'DOS', 'DAS', 'EM', 'MAIOR', 'MENOR'}
+
+
+def pasta_bonita(nome):
+    """Nome de pasta vinda do pen drive: '06 - B. T. EM - E MENOR' -> 'E menor', '05 -POP' -> 'Pop'."""
+    n = re.sub(r'^\s*\d{1,3}\s*[-.)]\s*', '', nome)
+    n = re.sub(r'^\s*B\.?\s*T\.?\s*(?:EM|IN)?\s*-\s*', '', n, flags=re.I)  # 'B. T. EM -' = backing track em
+    n = re.sub(r'\s*&\s*', ' & ', n)
+    n = re.sub(r'\b([A-G](?:#|b)?)\s*-\s*([A-G](?:#|b)?)(?=\s|$)', r'\1 / \2', n)  # 'C# - Db' -> 'C# / Db'
+    n = re.sub(r'\s+', ' ', n).strip(' -')
+    partes = []
+    for i, w in enumerate(n.split(' ')):
+        if w in _MAIUSCULAS or re.fullmatch(r'[A-G](#|b)?m?', w) or not (w.isalpha() and w.isupper() and len(w) > 1):
+            partes.append(w)  # sigla, nota (C#, Db, Am) ou palavra que já não está TODA EM MAIÚSCULA
+        elif w in _MINUSCULAS and i > 0:
+            partes.append(w.lower())
+        else:
+            partes.append(w[0] + w[1:].lower())
+    return ' '.join(partes) or nome.strip()
+
+
+def caminho_bonito(rel):
+    """Cada pasta de um caminho do pen drive com nome arrumado: '06 - B. T. EM - E MENOR/05 -POP' -> 'E menor/Pop'."""
+    return '/'.join(pasta_bonita(x) for x in re.split(r'[\\/]+', rel or '') if x.strip())
 
 
 def _limpa(texto, maximo):
@@ -265,6 +315,10 @@ def _pasta(v):
     if len(partes) > 6:
         raise Erro(400, 'Pastas demais, uma dentro da outra (no máximo 6).')
     return '/'.join(partes)
+
+
+def junta_pasta(*ps):
+    return '/'.join(p.strip('/') for p in ps if p and p.strip('/'))
 
 
 def pasta_usuario(uid):
@@ -307,7 +361,7 @@ def ja_existe(db, uid, pasta, origem, original):
     return r['id'] if r else None
 
 
-def guardar_faixa(db, uid, nome_arquivo, ler, tamanho, pasta='', nome=None, tom=None, bpm=None):
+def guardar_faixa(db, uid, nome_arquivo, ler, tamanho, pasta='', nome=None, tom=None, bpm=None, sub=''):
     """Grava o áudio em disco (nome gerado, nunca o do usuário) e registra no banco. WAV/FLAC/AIFF viram .m4a.
     `ler(n)` devolve os próximos n bytes; `tamanho` é o total esperado. Devolve a faixa, com 'repetida' se já existia."""
     origem = os.path.basename(str(nome_arquivo or '').replace('\\', '/'))[:200]
@@ -316,7 +370,7 @@ def guardar_faixa(db, uid, nome_arquivo, ler, tamanho, pasta='', nome=None, tom=
         raise Erro(415, 'Esse arquivo não é de áudio. Use MP3, M4A, WAV, OGG, AAC, FLAC ou AIFF.')
     if not 0 < tamanho <= MAX_FAIXA:
         raise Erro(413, 'Arquivo vazio ou grande demais (máximo de 600 MB).')
-    pasta = _pasta(pasta)
+    pasta = _pasta(junta_pasta(pasta, caminho_bonito(sub)))  # `sub`: pastas que vieram do pen drive, com nome arrumado
     tom = _tom(tom) if tom else None
     bpm = _bpm(bpm) if bpm not in (None, '') else None
     velho = ja_existe(db, uid, pasta, origem, tamanho)
@@ -486,7 +540,7 @@ def importar_pasta(db, uid, pasta, destino='', avisar=print):
     for raiz, dirs, arquivos in os.walk(pasta):
         dirs[:] = sorted(d for d in dirs if not d.startswith('.') and d != 'System Volume Information')
         rel = os.path.relpath(raiz, pasta)
-        alvo = _pasta(destino + '/' + ('' if rel == '.' else rel.replace(os.sep, '/')))
+        alvo = _pasta(junta_pasta(destino, '' if rel == '.' else caminho_bonito(rel.replace(os.sep, '/'))))
         for nome in sorted(arquivos):
             if nome.startswith('.') or os.path.splitext(nome)[1].lower() not in AUDIO:
                 continue

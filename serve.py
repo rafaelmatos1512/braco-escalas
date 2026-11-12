@@ -157,7 +157,7 @@ class H(http.server.SimpleHTTPRequestHandler):
         if rota == '/api/faixas' and metodo == 'POST':
             n = int(self.headers.get('Content-Length') or 0)
             g = lambda k: (q.get(k) or [None])[0]
-            f = B.guardar_faixa(db, u['id'], g('arquivo'), self.rfile.read, n, pasta=g('pasta') or '', nome=g('nome'), tom=g('tom'), bpm=g('bpm'))
+            f = B.guardar_faixa(db, u['id'], g('arquivo'), self.rfile.read, n, pasta=g('pasta') or '', nome=g('nome'), tom=g('tom'), bpm=g('bpm'), sub=g('sub') or '')
             return self._json(200 if f.get('repetida') else 201, f)
         if rota == '/api/pastas/mover' and metodo == 'POST':
             d = self._corpo_json()

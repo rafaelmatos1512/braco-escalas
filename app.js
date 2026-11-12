@@ -651,7 +651,7 @@ function renderBase() {
 
 /* ---------- CONTA (login) e MINHAS GRAVAÇÕES (faixas guardadas no servidor do app) ---------- */
 const conta = { usuario: null, cadastro: false, login: false, pronto: false, msg: '', err: false, senha: false };
-state.rx = { pasta: '', q: '', sel: null, faixas: [], pastas: [], extras: [], carregou: false, carregando: false, msg: '', err: false, edit: false, del: false, speed: 1, loop: true, nova: false, pastaEd: false, pastaDel: false, enviando: '', parar: false, destino: '' };
+state.rx = { pasta: '', q: '', sel: null, faixas: [], pastas: [], extras: [], carregou: false, carregando: false, msg: '', err: false, edit: false, del: false, speed: 1, loop: true, nova: false, pastaEd: false, pastaDel: false, enviando: '', parar: false, destino: '', destMov: '' };
 const pararGravacao = () => { const a = $('rxAudio'); if (a && !a.paused) a.pause(); };
 
 // progressões: com conta, ficam também no servidor (não somem se o navegador apagar os dados)
@@ -721,13 +721,17 @@ $('contaBtn').onclick = abrirConta;
 $('contaClose').onclick = () => { const d = $('contaDlg'); d.close ? d.close() : d.removeAttribute('open'); };
 $('contaDlg').addEventListener('click', e => { if (e.target === $('contaDlg')) $('contaClose').onclick(); });
 
-// Minhas gravações, organizadas em pastas (ex.: "A maior/Blues"), como no pen drive
+// Minhas gravações, organizadas em pastas (ex.: "A maior/Blues"), como no pen drive.
+// Duas telas: a pasta aberta (com Voltar para a pasta de cima) e a gravação aberta (com Voltar para a pasta dela).
 const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg|oga|flac|aif|aiff)$/i;
 const paiDe = p => p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
 const nomeDe = p => p.slice(p.lastIndexOf('/') + 1);
 const junta = (...ps) => ps.filter(Boolean).join('/');
 const dentro = (f, p) => !p || f.pasta === p || f.pasta.startsWith(p + '/');
+const naPasta = (x, p) => x === p || x.startsWith(p + '/');
 const nomeLimpo = t => t.replace(/[\\/]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 60);
+const mostraPasta = p => p ? p.split('/').join(' › ') : 'Início';
+const VOLTAR = l => `<button type="button" class="voltar" id="rxVoltar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>${esc(l)}</button>`;
 async function carregarFaixas() {
   const r = state.rx; r.carregando = true;
   try {
@@ -740,8 +744,17 @@ async function carregarFaixas() {
   if (state.tab === 'base' && state.b.fonte === 'rec') renderRec();
 }
 const todasPastas = () => { const r = state.rx; return [...new Set([...r.pastas, ...r.extras])].sort((a, b) => a.localeCompare(b, 'pt', { numeric: true, sensitivity: 'base' })); };
-const fxInfo = (f, comPasta) => [comPasta && f.pasta && '📁 ' + f.pasta.split('/').join(' › '), f.tom && 'tom ' + f.tom, f.bpm && f.bpm + ' bpm'].filter(Boolean).join(' · ') || 'sem tom e andamento';
-const opcoesPastas = id => `<datalist id="${id}">${todasPastas().map(k => `<option value="${esc(k)}">`).join('')}</datalist>`;
+const fxInfo = (f, comPasta) => [comPasta && f.pasta && '📁 ' + mostraPasta(f.pasta), f.tom && 'tom ' + f.tom, f.bpm && f.bpm + ' bpm'].filter(Boolean).join(' · ') || 'sem tom e andamento';
+// escolher pasta tocando nela (no lugar de digitar o caminho). `fora` = pasta que não pode ser escolhida (ela e as de dentro)
+const seletorPastas = (atual, fora) => '<div class="rxpick" role="listbox" aria-label="Escolha a pasta">' +
+  ['', ...todasPastas()].filter(p => !(fora && naPasta(p, fora))).map(p => {
+    const n = p ? p.split('/').length : 0;
+    return `<button type="button" role="option" data-dest="${esc(p)}" style="padding-left:${12 + n * 22}px" class="${p === atual ? 'on' : ''}" aria-selected="${p === atual}">${p ? '📁 ' + esc(nomeDe(p)) : '🏠 Início (fora das pastas)'}</button>`;
+  }).join('') + '</div>';
+const ligaSeletor = (box, onPick) => box.querySelectorAll('[data-dest]').forEach(b => b.onclick = () => {
+  box.querySelectorAll('[data-dest]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
+  onPick(b.dataset.dest); // sem redesenhar: o que já foi digitado nos campos continua lá
+});
 function renderRec() {
   const r = state.rx, a = $('rxAudio');
   const msg = r.msg ? `<p class="${r.err ? 'cerr' : 'cok'}" role="status">${esc(r.msg)}</p>` : '';
@@ -753,38 +766,49 @@ function renderRec() {
     $('rxList').innerHTML = ''; $('rxPlayer').hidden = true; return;
   }
   if (!r.carregou && !r.carregando) carregarFaixas();
-  const cur = r.pasta, todas = todasPastas();
-  if (cur && !todas.includes(cur) && r.carregou) r.pasta = '';
+  if (r.carregou && r.pasta && !todasPastas().includes(r.pasta)) r.pasta = '';
+  const f = r.sel ? r.faixas.find(x => x.id === r.sel) : null;
+  if (f) return renderFaixaAberta(f, msg);
+  $('rxPlayer').hidden = true;
+  if (a.src) { a.pause(); a.removeAttribute('src'); a.load(); }
+  renderPastaAberta(msg);
+}
+function renderPastaAberta(msg) {
+  const r = state.rx, todas = todasPastas();
   const q = fold(r.q), busca = !!q;
   const lista = busca ? r.faixas.filter(f => fold(f.nome + ' ' + f.pasta + ' ' + f.tom).includes(q)) : r.faixas.filter(f => f.pasta === r.pasta);
   const subs = busca ? [] : todas.filter(p => paiDe(p) === r.pasta);
-  const conta_ = p => r.faixas.filter(f => dentro(f, p)).length;
-  const aqui = r.pasta ? r.pasta.split('/').join(' › ') : 'Início (fora das pastas)';
-  const caminho = '<nav class="rxpath" aria-label="Pasta atual"><button type="button" data-ir="">Início</button>' +
-    (r.pasta ? r.pasta.split('/').map((n, i, arr) => ` › <button type="button" data-ir="${esc(arr.slice(0, i + 1).join('/'))}" ${i === arr.length - 1 ? 'class="on" aria-current="true"' : ''}>${esc(n)}</button>`).join('') : '') + '</nav>';
+  const quantas = p => r.faixas.filter(f => dentro(f, p)).length;
+  const aqui = mostraPasta(r.pasta);
+  const voltar = r.pasta && !busca ? VOLTAR('Voltar para ' + (paiDe(r.pasta) ? nomeDe(paiDe(r.pasta)) : 'o Início')) : '';
+  const caminho = busca ? '' : '<nav class="rxpath" aria-label="Pasta atual"><span>Você está em:</span> <button type="button" data-ir="" class="' + (r.pasta ? '' : 'on') + '">Início</button>' +
+    (r.pasta ? r.pasta.split('/').map((n, i, arr) => ` › <button type="button" data-ir="${esc(arr.slice(0, i + 1).join('/'))}" class="${i === arr.length - 1 ? 'on' : ''}">${esc(n)}</button>`).join('') : '') + '</nav>';
   let painel = '';
   if (r.enviando) painel = `<div class="box"><p><b>${esc(r.enviando)}</b></p><p class="hint">Arquivos WAV são diminuídos ao guardar; cada um leva alguns segundos.</p><div class="dlg-actions"><button type="button" class="link danger" id="rxStop">Parar de acrescentar</button></div></div>`;
-  else if (r.nova) painel = `<div class="box"><p><b>Nova pasta</b> dentro de <b>📁 ${esc(aqui)}</b></p><div class="rxform"><label>Nome da pasta<input id="rxNovaN" maxlength="60" placeholder="Ex.: Blues"></label></div>` +
+  else if (r.nova) painel = `<div class="box"><p><b>Nova pasta</b> dentro de <b>📁 ${esc(aqui)}</b></p><div class="rxform"><label>Nome da pasta<input id="rxNovaN" maxlength="60" placeholder="Ex.: Blues ou Djavan"></label></div>` +
     '<div class="dlg-actions"><button type="button" class="play" id="rxNovaOk">Criar</button><button type="button" class="link" id="rxNovaNo">Cancelar</button></div></div>';
-  else if (r.pastaEd) painel = `<div class="box"><p><b>Mudar o nome da pasta</b></p><div class="rxform"><label>Nome<input id="rxPN" maxlength="60" value="${esc(nomeDe(r.pasta))}"></label>` +
-    `<label>Fica dentro de<input id="rxPP" list="rxPastasP" maxlength="200" value="${esc(paiDe(r.pasta))}" placeholder="Início (fora das pastas)"></label></div>${opcoesPastas('rxPastasP')}` +
-    '<p class="hint">Deixe "Fica dentro de" vazio para ela ficar no Início.</p><div class="dlg-actions"><button type="button" class="play" id="rxPOk">Guardar</button><button type="button" class="link" id="rxPNo">Cancelar</button></div></div>';
+  else if (r.pastaEd) painel = `<div class="box"><p><b>Mudar a pasta ${esc(nomeDe(r.pasta))}</b></p><div class="rxform"><label>Nome<input id="rxPN" maxlength="60" value="${esc(nomeDe(r.pasta))}"></label></div>` +
+    `<p><b>Fica dentro de:</b> toque na pasta</p>${seletorPastas(paiDe(r.pasta), r.pasta)}` +
+    '<div class="dlg-actions"><button type="button" class="play" id="rxPOk">Guardar</button><button type="button" class="link" id="rxPNo">Cancelar</button></div></div>';
   const delP = r.pastaDel; r.pastaDel = false;
-  const acoesPasta = r.pasta && !busca && !painel ? `<p class="rxacts"><button type="button" class="link" id="rxPEd">Mudar o nome ou o lugar desta pasta</button> <button type="button" class="link danger" id="rxPDel">${delP ? `Toque de novo para apagar a pasta e as ${conta_(r.pasta)} gravação(ões) dela` : 'Apagar esta pasta'}</button></p>` : '';
+  const acoesPasta = r.pasta && !busca && !painel ? `<p class="rxacts"><button type="button" class="link" id="rxPEd">Mudar o nome ou o lugar desta pasta</button> <button type="button" class="link danger" id="rxPDel">${delP ? `Toque de novo para apagar a pasta e as ${quantas(r.pasta)} gravação(ões) dela` : 'Apagar esta pasta'}</button></p>` : '';
   const vazio = r.carregou && !r.faixas.length && !r.extras.length ? '<p class="hint">Você ainda não guardou nenhuma gravação. Toque em <b>+ Adicionar backing tracks</b> para trazer do pen drive ou do computador.</p>'
     : r.carregou && !busca && !subs.length && !lista.length ? '<p class="hint">Esta pasta está vazia. Toque em <b>+ Adicionar backing tracks</b> para pôr gravações nela.</p>'
     : busca && !lista.length ? '<p class="hint">Nenhuma gravação com essa busca.</p>' : '';
-  $('rxHead').innerHTML = `<div class="rxbar"><input id="rxQ" type="search" placeholder="Buscar em todas as pastas: nome, pasta ou tom" value="${esc(r.q)}" autocomplete="off">` +
+  const dica = busca || r.enviando ? '' : `<p class="hint">Toque em <b>+ Adicionar backing tracks</b>, abra a pasta do pen drive ou do computador e escolha as músicas (pode marcar várias). Elas entram em <b>📁 ${esc(aqui)}</b>. ` +
+    '<button type="button" class="link" id="rxPick">Trazer uma pasta inteira, com as pastas de dentro</button></p>' +
+    (!conta.comprime ? '<p class="hint">Aviso: falta o programa que diminui os WAV (ffmpeg); eles serão guardados do tamanho original.</p>' : '');
+  $('rxHead').innerHTML = voltar + caminho +
+    `<div class="rxbar"><input id="rxQ" type="search" placeholder="Buscar em todas as pastas: nome, pasta ou tom" value="${esc(r.q)}" autocomplete="off">` +
     `<button type="button" class="play" id="rxAdd" ${r.enviando ? 'disabled' : ''}>+ Adicionar backing tracks</button><button type="button" class="play" id="rxNova" ${r.enviando ? 'disabled' : ''}>+ Nova pasta</button></div>` +
-    (busca || r.enviando ? '' : `<p class="hint">Toque em <b>+ Adicionar backing tracks</b>, abra a pasta do pen drive ou do computador e escolha as músicas (pode marcar várias). Elas entram em <b>📁 ${esc(aqui)}</b>. ` +
-      '<button type="button" class="link" id="rxPick">Trazer uma pasta inteira, com as pastas de dentro</button></p>' +
-      (!conta.comprime ? '<p class="hint">Aviso: falta o programa que diminui os WAV (ffmpeg); eles serão guardados do tamanho original.</p>' : '')) +
-    (busca ? '' : caminho) + painel + msg + acoesPasta + vazio;
-  $('rxQ').oninput = e => { r.q = e.target.value; const pos = e.target.selectionStart; renderRec(); $('rxQ').focus(); $('rxQ').setSelectionRange(pos, pos); };
+    dica + painel + msg + acoesPasta + vazio;
   const fecha = () => { r.nova = r.pastaEd = false; };
+  const ir = p => { r.pasta = p; fecha(); r.msg = ''; renderRec(); tabJump = true; $('tab-base').scrollIntoView({ block: 'start' }); };
+  if ($('rxVoltar')) $('rxVoltar').onclick = () => ir(paiDe(r.pasta));
+  $('rxHead').querySelectorAll('[data-ir]').forEach(x => x.onclick = () => ir(x.dataset.ir));
+  $('rxQ').oninput = e => { r.q = e.target.value; const pos = e.target.selectionStart; renderRec(); $('rxQ').focus(); $('rxQ').setSelectionRange(pos, pos); };
   $('rxAdd').onclick = () => { fecha(); r.msg = ''; r.destino = r.pasta; $('rxFile').value = ''; $('rxFile').click(); };
   $('rxNova').onclick = () => { const v = !r.nova; fecha(); r.nova = v; r.msg = ''; renderRec(); if (v) $('rxNovaN').focus(); };
-  $('rxHead').querySelectorAll('[data-ir]').forEach(x => x.onclick = () => { r.pasta = x.dataset.ir; fecha(); r.msg = ''; renderRec(); });
   if ($('rxStop')) $('rxStop').onclick = () => { r.parar = true; };
   if ($('rxPick')) $('rxPick').onclick = () => { fecha(); r.msg = ''; r.destino = r.pasta; $('rxDir').value = ''; $('rxDir').click(); };
   if ($('rxNovaNo')) $('rxNovaNo').onclick = () => { r.nova = false; renderRec(); };
@@ -798,14 +822,17 @@ function renderRec() {
     };
     $('rxNovaOk').onclick = criar; $('rxNovaN').onkeydown = e => { if (e.key === 'Enter') criar(); };
   }
-  if ($('rxPEd')) $('rxPEd').onclick = () => { fecha(); r.pastaEd = true; r.msg = ''; renderRec(); $('rxPN').focus(); };
+  if ($('rxPEd')) $('rxPEd').onclick = () => { fecha(); r.pastaEd = true; r.destMov = paiDe(r.pasta); r.msg = ''; renderRec(); $('rxPN').focus(); };
   if ($('rxPNo')) $('rxPNo').onclick = () => { r.pastaEd = false; renderRec(); };
+  if (r.pastaEd) ligaSeletor($('rxHead'), p => { r.destMov = p; });
   if ($('rxPOk')) $('rxPOk').onclick = async () => {
     const n = nomeLimpo($('rxPN').value); if (!n) { $('rxPN').focus(); return; }
-    const de = r.pasta, para = junta($('rxPP').value.split(/[\\/]+/).map(x => x.trim()).filter(Boolean).join('/'), n);
+    const de = r.pasta, para = junta(r.destMov, n);
+    if (para === de) { r.pastaEd = false; renderRec(); return; }
+    if (todasPastas().some(p => p !== de && p.toLowerCase() === para.toLowerCase())) { r.msg = 'Já existe uma pasta com esse nome aí. Escolha outro nome.'; r.err = true; renderRec(); return; }
     try {
-      if (r.pastas.some(p => p === de || p.startsWith(de + '/'))) await api.moverPasta(de, para);
-      r.extras = r.extras.map(p => p === de || p.startsWith(de + '/') ? para + p.slice(de.length) : p);
+      if (r.pastas.some(p => naPasta(p, de))) await api.moverPasta(de, para);
+      r.extras = r.extras.map(p => naPasta(p, de) ? para + p.slice(de.length) : p);
       r.pasta = para; r.pastaEd = false; r.msg = 'Pasta guardada.'; r.err = false; await carregarFaixas();
     } catch (e) { r.msg = e.message; r.err = true; renderRec(); }
   };
@@ -813,60 +840,68 @@ function renderRec() {
     if (!delP) { r.pastaDel = true; renderRec(); return; }
     const p = r.pasta;
     try {
-      const temFaixa = r.faixas.some(f => dentro(f, p));
-      if (temFaixa) await api.apagarPasta(p);
-      r.extras = r.extras.filter(x => !(x === p || x.startsWith(p + '/')));
-      if (r.sel && r.faixas.some(f => f.id === r.sel && dentro(f, p))) r.sel = null;
+      if (r.faixas.some(f => dentro(f, p))) await api.apagarPasta(p);
+      r.extras = r.extras.filter(x => !naPasta(x, p));
       r.pasta = paiDe(p); r.msg = 'Pasta apagada.'; r.err = false; await carregarFaixas();
     } catch (e) { r.msg = e.message; r.err = true; renderRec(); }
   };
-  $('rxList').innerHTML = subs.map(p => `<button type="button" class="pcard rxfolder" data-p="${esc(p)}"><b>📁 ${esc(nomeDe(p))}</b><span>${conta_(p)} gravação(ões)</span></button>`).join('') +
-    lista.map(f => `<button type="button" class="pcard ${f.id === r.sel ? 'active' : ''}" data-id="${f.id}"><b>${esc(f.nome)}</b><span>${esc(fxInfo(f, busca))}</span></button>`).join('');
-  $('rxList').querySelectorAll('[data-p]').forEach(x => x.onclick = () => { r.pasta = x.dataset.p; fecha(); r.msg = ''; renderRec(); tabJump = true; $('rxHead').scrollIntoView({ block: 'nearest' }); });
+  $('rxList').innerHTML = subs.map(p => `<button type="button" class="pcard rxfolder" data-p="${esc(p)}"><b>📁 ${esc(nomeDe(p))}</b><span>${quantas(p)} gravação(ões)</span></button>`).join('') +
+    lista.map(f => `<button type="button" class="pcard" data-id="${f.id}"><b>🎵 ${esc(f.nome)}</b><span>${esc(fxInfo(f, busca))}</span></button>`).join('');
+  $('rxList').querySelectorAll('[data-p]').forEach(x => x.onclick = () => ir(x.dataset.p));
   $('rxList').querySelectorAll('[data-id]').forEach(x => x.onclick = () => {
-    const id = +x.dataset.id; if (r.sel !== id) { r.sel = id; r.edit = r.del = false; a.src = api.audioUrl(id); stopBase(); a.play().catch(() => {}); }
-    renderRec(); $('rxPlayer').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); tabJump = true;
+    r.sel = +x.dataset.id; r.edit = r.del = false; r.msg = '';
+    const a = $('rxAudio'); a.src = api.audioUrl(r.sel); stopBase(); a.play().catch(() => {});
+    renderRec(); tabJump = true; $('tab-base').scrollIntoView({ block: 'start' });
   });
-  const f = r.faixas.find(x => x.id === r.sel);
-  $('rxPlayer').hidden = !f;
-  if (!f) { if (a.src) { a.pause(); a.removeAttribute('src'); a.load(); } return; }
+}
+function renderFaixaAberta(f, msg) {
+  const r = state.rx, a = $('rxAudio');
+  $('rxHead').innerHTML = VOLTAR('Voltar para ' + (f.pasta ? nomeDe(f.pasta) : 'o Início')) + msg;
+  $('rxList').innerHTML = '';
+  $('rxVoltar').onclick = () => { r.sel = null; r.edit = r.del = false; r.msg = ''; if (r.q && !fold(f.nome + ' ' + f.pasta + ' ' + f.tom).includes(fold(r.q))) r.q = ''; if (!r.q) r.pasta = f.pasta; renderRec(); tabJump = true; $('tab-base').scrollIntoView({ block: 'start' }); };
+  $('rxPlayer').hidden = false;
+  if (!a.src) a.src = api.audioUrl(f.id);
   a.loop = r.loop; a.playbackRate = r.speed; a.preservesPitch = a.webkitPreservesPitch = true; // mais lento sem mudar o tom
-  $('rxInfo').innerHTML = `<p><b class="big">${esc(f.nome)}</b></p><p>${esc(fxInfo(f, true))}</p>`;
+  $('rxInfo').innerHTML = `<p><b class="big">🎵 ${esc(f.nome)}</b></p><p>${esc(fxInfo(f, true))}</p>`;
   const delArm = r.del; r.del = false;
   $('rxCtl').innerHTML = `<div class="roots preg"><b>Velocidade:</b> ${[[0.5, 'Bem lenta'], [0.75, 'Lenta'], [1, 'Normal'], [1.25, 'Rápida']].map(([v, l]) => `<button type="button" data-sp="${v}" class="${r.speed === v ? 'on' : ''}">${l}</button>`).join('')}</div>` +
     `<div class="roots preg"><b>Repetir:</b> <button type="button" data-lp="1" class="${r.loop ? 'on' : ''}">Sem parar</button><button type="button" data-lp="0" class="${r.loop ? '' : 'on'}">Uma vez</button></div>` +
     '<p class="hint">Mais lenta não muda o tom: bom para estudar um trecho difícil.</p>' +
-    (r.edit ? `<div class="rxform"><label>Nome<input id="rxN" maxlength="120" value="${esc(f.nome)}"></label><label>Pasta<input id="rxR" list="rxPastas2" maxlength="200" value="${esc(f.pasta)}" placeholder="Início (fora das pastas)"></label>` +
+    (r.edit ? `<div class="rxform"><label>Nome<input id="rxN" maxlength="120" value="${esc(f.nome)}"></label>` +
       `<label>Tom (ex.: A, F#, Em)<input id="rxT" maxlength="4" value="${esc(f.tom)}"></label><label>Andamento (bpm)<input id="rxB" type="number" min="30" max="300" inputmode="numeric" value="${f.bpm || ''}"></label></div>` +
-      opcoesPastas('rxPastas2') + '<p class="hint">Para mudar de pasta, escolha uma da lista ou escreva o nome de uma nova (use / para pôr dentro de outra: <i>A maior/Blues</i>).</p>' +
+      `<p><b>Pasta:</b> toque na pasta onde ela vai ficar</p>${seletorPastas(f.pasta)}` +
       '<div class="dlg-actions"><button type="button" class="play" id="rxSave">Guardar</button><button type="button" class="link" id="rxEditNo">Cancelar</button></div>'
       : `<p><button type="button" class="link" id="rxEdit">Mudar nome, pasta, tom ou andamento</button> <button type="button" class="link danger" id="rxDel">${delArm ? 'Toque de novo para apagar de vez' : 'Apagar esta gravação'}</button></p>`);
   $('rxCtl').querySelectorAll('[data-sp]').forEach(x => x.onclick = () => { r.speed = +x.dataset.sp; renderRec(); });
   $('rxCtl').querySelectorAll('[data-lp]').forEach(x => x.onclick = () => { r.loop = x.dataset.lp === '1'; renderRec(); });
-  if ($('rxEdit')) $('rxEdit').onclick = () => { r.edit = true; renderRec(); };
+  if ($('rxEdit')) $('rxEdit').onclick = () => { r.edit = true; r.destMov = f.pasta; renderRec(); };
   if ($('rxEditNo')) $('rxEditNo').onclick = () => { r.edit = false; renderRec(); };
+  if (r.edit) ligaSeletor($('rxCtl'), p => { r.destMov = p; });
   if ($('rxSave')) $('rxSave').onclick = async () => {
-    try { await api.mudarFaixa(f.id, { nome: $('rxN').value, pasta: $('rxR').value, tom: $('rxT').value.trim(), bpm: $('rxB').value }); r.edit = false; r.msg = 'Guardado.'; r.err = false; await carregarFaixas(); }
-    catch (e) { r.msg = e.message; r.err = true; renderRec(); }
+    try {
+      await api.mudarFaixa(f.id, { nome: $('rxN').value, pasta: r.destMov, tom: $('rxT').value.trim(), bpm: $('rxB').value });
+      r.edit = false; r.msg = r.destMov !== f.pasta ? `Guardado. Agora ela está em 📁 ${mostraPasta(r.destMov)}.` : 'Guardado.'; r.err = false; await carregarFaixas();
+    } catch (e) { r.msg = e.message; r.err = true; renderRec(); }
   };
   if ($('rxDel')) $('rxDel').onclick = async () => {
     if (!delArm) { r.del = true; renderRec(); return; }
-    try { await api.apagarFaixa(f.id); r.sel = null; r.msg = 'Gravação apagada.'; r.err = false; await carregarFaixas(); }
+    try { await api.apagarFaixa(f.id); r.sel = null; r.pasta = f.pasta; r.msg = 'Gravação apagada.'; r.err = false; await carregarFaixas(); }
     catch (e) { r.msg = e.message; r.err = true; renderRec(); }
   };
 }
-// arquivos soltos (rxFile) ou uma pasta inteira com as de dentro (rxDir: cada arquivo traz o caminho relativo)
+// arquivos soltos (rxFile) ou uma pasta inteira com as de dentro (rxDir: cada arquivo traz o caminho relativo;
+// o servidor arruma o nome dessas pastas: '06 - B. T. EM - E MENOR' vira 'E menor')
 async function acrescentar(lista) {
   const r = state.rx;
   const arqs = [...lista].filter(f => AUDIO_EXT.test(f.name) && !f.name.startsWith('.'));
   if (!arqs.length) { r.msg = 'Não achei nenhum arquivo de áudio (MP3, M4A, WAV…) no que você escolheu.'; r.err = true; renderRec(); return; }
   let ok = 0, rep = 0; const erros = []; r.parar = false;
   for (let i = 0; i < arqs.length && !r.parar; i++) {
-    const f = arqs[i], rel = f.webkitRelativePath || '';
-    const pasta = junta(r.destino, rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '');
-    if (r.faixas.some(x => x.pasta === pasta && x.origem === f.name && x.original === f.size)) { rep++; continue; }
+    const f = arqs[i], rel = f.webkitRelativePath || '', sub = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '';
+    // já guardado (mesmo arquivo, mesmo tamanho) nesta pasta ou nas de dentro: nem envia
+    if (r.faixas.some(x => x.origem === f.name && x.original === f.size && dentro(x, r.destino) && (sub || x.pasta === r.destino))) { rep++; continue; }
     r.enviando = `Guardando ${i + 1} de ${arqs.length}: ${f.name}`; r.msg = ''; renderRec();
-    try { const x = await api.enviarFaixa(f, pasta); if (x.repetida) rep++; else { ok++; r.faixas.push(x); } }
+    try { const x = await api.enviarFaixa(f, r.destino, sub); if (x.repetida) rep++; else { ok++; r.faixas.push(x); } }
     catch (err) { erros.push(`${f.name}: ${err.message}`); if (err.status === 0) break; }
   }
   r.enviando = '';
