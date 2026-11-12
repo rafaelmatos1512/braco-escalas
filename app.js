@@ -776,17 +776,17 @@ function renderRec() {
     : busca && !lista.length ? '<p class="hint">Nenhuma gravação com essa busca.</p>' : '';
   $('rxHead').innerHTML = `<div class="rxbar"><input id="rxQ" type="search" placeholder="Buscar em todas as pastas: nome, pasta ou tom" value="${esc(r.q)}" autocomplete="off">` +
     `<button type="button" class="play" id="rxAdd" ${r.enviando ? 'disabled' : ''}>+ Adicionar backing tracks</button><button type="button" class="play" id="rxNova" ${r.enviando ? 'disabled' : ''}>+ Nova pasta</button></div>` +
-    (busca || r.enviando ? '' : `<p class="hint">Toque em <b>+ Adicionar backing tracks</b> e escolha uma pasta do pen drive ou do computador: vem tudo o que tem dentro, com as pastas do mesmo jeito. Entra em <b>📁 ${esc(aqui)}</b>. ` +
-      '<button type="button" class="link" id="rxPick">Prefiro escolher arquivos soltos</button></p>' +
+    (busca || r.enviando ? '' : `<p class="hint">Toque em <b>+ Adicionar backing tracks</b>, abra a pasta do pen drive ou do computador e escolha as músicas (pode marcar várias). Elas entram em <b>📁 ${esc(aqui)}</b>. ` +
+      '<button type="button" class="link" id="rxPick">Trazer uma pasta inteira, com as pastas de dentro</button></p>' +
       (!conta.comprime ? '<p class="hint">Aviso: falta o programa que diminui os WAV (ffmpeg); eles serão guardados do tamanho original.</p>' : '')) +
     (busca ? '' : caminho) + painel + msg + acoesPasta + vazio;
   $('rxQ').oninput = e => { r.q = e.target.value; const pos = e.target.selectionStart; renderRec(); $('rxQ').focus(); $('rxQ').setSelectionRange(pos, pos); };
   const fecha = () => { r.nova = r.pastaEd = false; };
-  $('rxAdd').onclick = () => { fecha(); r.msg = ''; r.destino = r.pasta; $('rxDir').value = ''; $('rxDir').click(); };
+  $('rxAdd').onclick = () => { fecha(); r.msg = ''; r.destino = r.pasta; $('rxFile').value = ''; $('rxFile').click(); };
   $('rxNova').onclick = () => { const v = !r.nova; fecha(); r.nova = v; r.msg = ''; renderRec(); if (v) $('rxNovaN').focus(); };
   $('rxHead').querySelectorAll('[data-ir]').forEach(x => x.onclick = () => { r.pasta = x.dataset.ir; fecha(); r.msg = ''; renderRec(); });
   if ($('rxStop')) $('rxStop').onclick = () => { r.parar = true; };
-  if ($('rxPick')) $('rxPick').onclick = () => { fecha(); r.msg = ''; r.destino = r.pasta; $('rxFile').value = ''; $('rxFile').click(); };
+  if ($('rxPick')) $('rxPick').onclick = () => { fecha(); r.msg = ''; r.destino = r.pasta; $('rxDir').value = ''; $('rxDir').click(); };
   if ($('rxNovaNo')) $('rxNovaNo').onclick = () => { r.nova = false; renderRec(); };
   if ($('rxNovaOk')) {
     const criar = () => {
