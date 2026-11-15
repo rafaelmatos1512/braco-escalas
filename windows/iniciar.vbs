@@ -55,6 +55,11 @@ If Not Ligado() Then
   End If
 End If
 
+' Com /servidor (atalho da Inicialização do Windows) só liga o servidor, sem abrir o Chrome.
+If WScript.Arguments.Count > 0 Then
+  If LCase(WScript.Arguments(0)) = "/servidor" Then WScript.Quit 0
+End If
+
 chrome = ""
 For Each c In Array("%ProgramFiles%\Google\Chrome\Application\chrome.exe", _
                     "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe", _

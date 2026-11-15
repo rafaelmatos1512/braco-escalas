@@ -78,6 +78,14 @@ foreach ($pasta in $alvos) {
   Ok "Atalho em $pasta"
 }
 
+# Liga o servidor escondido quando o Windows abre: o app fica pronto sem esperar.
+$ini = $ws.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Startup')) 'Braço e Escalas (servidor).lnk'))
+$ini.TargetPath = Join-Path $env:WINDIR 'System32\wscript.exe'
+$ini.Arguments = '"' + (Join-Path $Aqui 'iniciar.vbs') + '" /servidor'
+$ini.WorkingDirectory = $App
+$ini.Save()
+Ok 'Liga sozinho quando o Windows abre'
+
 Passo 'Teste'
 Parar-Servidor
 Start-Process (Join-Path $env:WINDIR 'System32\wscript.exe') -ArgumentList ('"' + (Join-Path $Aqui 'iniciar.vbs') + '"')
