@@ -21,4 +21,5 @@ git -C $App pull --ff-only
 if ($LASTEXITCODE -ne 0) { Aviso 'Não deu para atualizar (sem internet ou arquivos mudados à mão nesta pasta).'; exit 1 }
 Passo 'Reiniciando o servidor'
 Parar-Servidor
+Start-Process (Join-Path $env:WINDIR 'System32\wscript.exe') -ArgumentList ('"' + (Join-Path $Aqui 'iniciar.vbs') + '" /servidor')
 Ok 'Pronto. Abra o app pelo ícone "Braço e Escalas" (se o Chrome estiver aberto, aperte Ctrl+Shift+R).'

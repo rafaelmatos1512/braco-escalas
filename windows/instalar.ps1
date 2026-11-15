@@ -86,6 +86,15 @@ $ini.WorkingDirectory = $App
 $ini.Save()
 Ok 'Liga sozinho quando o Windows abre'
 
+# Atalho para baixar a versão nova (atualizar.bat), sem precisar abrir a pasta.
+$atu = $ws.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'Atualizar Braço e Escalas.lnk'))
+$atu.TargetPath = Join-Path $Aqui 'atualizar.bat'
+$atu.WorkingDirectory = $App
+$atu.IconLocation = (Join-Path $env:WINDIR 'System32\shell32.dll') + ',238'
+$atu.Description = 'Baixa a versão nova do Braço e Escalas (as gravações continuam)'
+$atu.Save()
+Ok 'Atalho Atualizar Braço e Escalas na área de trabalho'
+
 Passo 'Teste'
 Parar-Servidor
 Start-Process (Join-Path $env:WINDIR 'System32\wscript.exe') -ArgumentList ('"' + (Join-Path $Aqui 'iniciar.vbs') + '"')

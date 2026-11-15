@@ -97,7 +97,7 @@ com o app aberto, clique com o botão direito no ícone dele na barra de tarefas
 | Para… | Faça |
 |---|---|
 | Abrir | Clique duas vezes em **Braço e Escalas** na área de trabalho |
-| Atualizar o app | `windows\atualizar.bat` (baixa a versão nova e reinicia; as gravações continuam) |
+| Atualizar o app | Clique duas vezes em **Atualizar Braço e Escalas** na área de trabalho (ou `windows\atualizar.bat`): baixa a versão nova e reinicia; as gravações continuam |
 | Fazer cópia de segurança | Copie a pasta `%LOCALAPPDATA%\BracoEscalas\dados` inteira para o pen drive |
 | Restaurar a cópia | Feche o Chrome, cole a pasta `dados` de volta no mesmo lugar |
 
