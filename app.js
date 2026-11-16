@@ -1269,6 +1269,8 @@ $('fminus').onclick = () => { fs = Math.max(0.85, +(fs - 0.15).toFixed(2)); appl
 applyFs();
 
 
+const observe = (fn, target) => window.ResizeObserver ? new ResizeObserver(fn).observe(target) : (addEventListener('resize', fn), setTimeout(fn));
+
 // filtros curtos viram botões (tudo do mesmo tamanho, sem lista abrindo no meio da tela)
 function segmentize(id) {
   const sel = $(id); sel.classList.add('segd');
