@@ -49,7 +49,6 @@
       <div id="scaleInfo" class="box"></div>
       <div class="opts">
         <label>Escala <select id="scale"></select><small class="hint">Cada escala tem um som: Maior soa alegre, Menor soa triste, Pentatônica e Blues são as dos solos.</small></label>
-        <label>Casas <select id="frets"><option value="12">12</option><option value="24">24</option></select><small class="hint">Quantas casas do braço aparecem. 12 vai até a metade do braço; 24 mostra o braço inteiro da guitarra.</small></label>
         <label>Nomes das notas <select id="hide"><option value="0">Mostrar</option><option value="1">Esconder (treino)</option></select><small class="hint">"Esconder" liga o modo treino: as bolinhas ficam sem nome e você toca para conferir.</small></label>
         <div class="sw-wrap"><label class="switch"><input type="checkbox" id="all"> Mostrar todas as notas</label><small class="hint">Mostra também as notas que não são da escala (em cinza). Bom para treinar o braço inteiro.</small></div>
       </div>
@@ -103,7 +102,6 @@
         <div id="voicings" class="grid"></div>
         <div id="cMore"></div>
         <div id="voiceInfo" class="box" hidden></div>
-        <div class="opts"><label>Braço <select id="frets2"><option value="24">Todo (24 casas)</option><option value="12">12 casas</option></select><small class="hint">Quantas casas mostrar no braço lá embaixo.</small></label></div>
         <div class="board-wrap" id="board2wrap" hidden><div id="board2"></div></div>
         <p class="legend"><i class="d o"></i> nota principal do acorde <i class="d b"></i> outras notas do acorde · toque numa bolinha para ouvir</p>
       </div>
@@ -424,6 +422,7 @@
       <p>Da mais grossa para a mais fina: 6ª corda Mi, 5ª Lá, 4ª Ré, 3ª Sol, 2ª Si, 1ª Mi. No desenho do braço, a corda mais fina fica em cima.</p></details>
   </section>
 </main>
+<div id="nowBar" hidden aria-live="polite"></div>
 <dialog id="contaDlg" aria-labelledby="contaTitle">
   <button type="button" class="close" id="contaClose" aria-label="Fechar">✕</button>
   <h2 id="contaTitle">Sua conta</h2>

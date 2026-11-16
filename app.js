@@ -77,8 +77,8 @@ function drawRow(host, from, to, o) {
     }
   }
 }
-const perRowFor = (w, frets = 24) => (w >= 1400 && frets > 12 ? 24 : w >= 760 ? 12 : 6);
-function drawBoard(host, frets, o) {
+// o braço sempre inteiro (24 casas) numa linha só, em todas as telas; em tela estreita rola para o lado
+function drawBoard(host, _frets, o) {
   host.innerHTML = '';
   host.onclick = e => {
     const m = e.target.getAttribute && e.target.getAttribute('data-m');
@@ -86,9 +86,7 @@ function drawBoard(host, frets, o) {
     playNote(+m);
     if (o.onReveal) o.onReveal(e.target.getAttribute('data-sf'));
   };
-  const perRow = o.oneRow ? frets : perRowFor(host.clientWidth, frets); // oneRow: braço inteiro numa linha só (menor)
-  for (let from = 1; from <= frets; from += perRow)
-    drawRow(host, from, Math.min(from + perRow - 1, frets), o);
+  drawRow(host, 1, 24, o);
 }
 
 /* ---------- diagrama de acorde ---------- */
@@ -535,6 +533,7 @@ function stopBase() {
   if (b.player) { b.player.stop(); b.player = null; }
   const was = b.playing; b.playing = false;
   if (was && state.tab === 'base') renderBase();
+  nowBar();
 }
 function baseChords() {
   const b = state.b;
@@ -563,8 +562,8 @@ function startBase() {
   if (!soundOn()) { b.msg = 'O som está desligado. Toque no alto-falante no alto da tela para ligar.'; renderBase(); return; }
   if (b.player) b.player.stop();
   stopProg();
-  const { chords } = baseChords();
-  b.msg = ''; b.cur = 0;
+  const { chords, name } = baseChords();
+  b.msg = ''; b.cur = 0; b.nome = name;
   b.player = createPlayer({ chords: chords.map(c => ({ frets: c.v.frets, rootPc: c.rootPc, iv: CHORD_TYPES[c.type].iv })), bpm: b.bpm, bars: b.bars, groove: b.groove, mix: b.mix, onBeat: paintBeat });
   b.playing = true; b.player.start();
   renderBase();
@@ -757,6 +756,7 @@ const ligaSeletor = (box, onPick) => box.querySelectorAll('[data-dest]').forEach
 });
 function renderRec() {
   const r = state.rx, a = $('rxAudio');
+  queueMicrotask(nowBar);
   const msg = r.msg ? `<p class="${r.err ? 'cerr' : 'cok'}" role="status">${esc(r.msg)}</p>` : '';
   if (!api.temServidor || !conta.usuario) {
     $('rxHead').innerHTML = '<div class="box">' + (!conta.pronto ? '<p>Carregando…</p>' : !api.temServidor
@@ -769,8 +769,7 @@ function renderRec() {
   if (r.carregou && r.pasta && !todasPastas().includes(r.pasta)) r.pasta = '';
   const f = r.sel ? r.faixas.find(x => x.id === r.sel) : null;
   if (f) return renderFaixaAberta(f, msg);
-  $('rxPlayer').hidden = true;
-  if (a.src) { a.pause(); a.removeAttribute('src'); a.load(); }
+  $('rxPlayer').hidden = true; // a gravação continua tocando enquanto você anda pelas pastas
   renderPastaAberta(msg);
 }
 function renderPastaAberta(msg) {
@@ -850,7 +849,7 @@ function renderPastaAberta(msg) {
   $('rxList').querySelectorAll('[data-p]').forEach(x => x.onclick = () => ir(x.dataset.p));
   $('rxList').querySelectorAll('[data-id]').forEach(x => x.onclick = () => {
     r.sel = +x.dataset.id; r.edit = r.del = false; r.msg = '';
-    const a = $('rxAudio'); a.src = api.audioUrl(r.sel); stopBase(); a.play().catch(() => {});
+    const a = $('rxAudio'); a.src = api.audioUrl(r.sel); r.tocando = r.sel; stopBase(); a.play().catch(() => {});
     renderRec(); tabJump = true; $('tab-base').scrollIntoView({ block: 'start' });
   });
 }
@@ -860,7 +859,7 @@ function renderFaixaAberta(f, msg) {
   $('rxList').innerHTML = '';
   $('rxVoltar').onclick = () => { r.sel = null; r.edit = r.del = false; r.msg = ''; if (r.q && !fold(f.nome + ' ' + f.pasta + ' ' + f.tom).includes(fold(r.q))) r.q = ''; if (!r.q) r.pasta = f.pasta; renderRec(); tabJump = true; $('tab-base').scrollIntoView({ block: 'start' }); };
   $('rxPlayer').hidden = false;
-  if (!a.src) a.src = api.audioUrl(f.id);
+  if (r.tocando !== f.id) { a.src = api.audioUrl(f.id); r.tocando = f.id; }
   a.loop = r.loop; a.playbackRate = r.speed; a.preservesPitch = a.webkitPreservesPitch = true; // mais lento sem mudar o tom
   $('rxInfo').innerHTML = `<p><b class="big">🎵 ${esc(f.nome)}</b></p><p>${esc(fxInfo(f, true))}</p>`;
   const delArm = r.del; r.del = false;
@@ -885,7 +884,7 @@ function renderFaixaAberta(f, msg) {
   };
   if ($('rxDel')) $('rxDel').onclick = async () => {
     if (!delArm) { r.del = true; renderRec(); return; }
-    try { await api.apagarFaixa(f.id); r.sel = null; r.pasta = f.pasta; r.msg = 'Gravação apagada.'; r.err = false; await carregarFaixas(); }
+    try { await api.apagarFaixa(f.id); if (r.tocando === f.id) { a.pause(); a.removeAttribute('src'); a.load(); r.tocando = null; } r.sel = null; r.pasta = f.pasta; r.msg = 'Gravação apagada.'; r.err = false; await carregarFaixas(); }
     catch (e) { r.msg = e.message; r.err = true; renderRec(); }
   };
 }
@@ -911,7 +910,25 @@ async function acrescentar(lista) {
 }
 $('rxFile').onchange = e => acrescentar(e.target.files);
 $('rxDir').onchange = e => acrescentar(e.target.files);
-$('rxAudio').addEventListener('play', () => stopBase());
+$('rxAudio').addEventListener('play', () => { stopBase(); nowBar(); });
+['pause', 'ended'].forEach(ev => $('rxAudio').addEventListener(ev, () => nowBar()));
+// barra embaixo quando algo toca fora da tela dele (outra aba ou outra pasta): mostra o nome, volta para ele e para
+function nowBar() {
+  const bar = $('nowBar'), a = $('rxAudio'), r = state.rx, b = state.b;
+  const rec = !!a.src && !a.paused, f = rec && r.faixas.find(x => x.id === r.tocando);
+  const naTela = state.tab === 'base' && (rec ? b.fonte === 'rec' && r.sel === r.tocando : b.fonte !== 'rec');
+  const nome = rec ? (f ? f.nome : 'gravação') : b.playing ? 'Base: ' + (b.nome || '') : '';
+  bar.hidden = !nome || naTela;
+  document.body.classList.toggle('nb-on', !bar.hidden);
+  if (bar.hidden) return;
+  bar.innerHTML = `<button type="button" class="nbgo" id="nbGo" title="Abrir o que está tocando"><span>Tocando agora</span><b>🎵 ${esc(nome)}</b></button>` +
+    STOP_BTN.replace('id="pPlay"', 'id="nbStop"');
+  $('nbStop').onclick = () => { if (rec) a.pause(); else stopBase(); nowBar(); };
+  $('nbGo').onclick = () => {
+    if (rec) { b.fonte = 'rec'; r.sel = r.tocando; r.edit = r.del = false; } else b.fonte = 'app';
+    setTab('base');
+  };
+}
 
 /* ---------- ABA ESCALAS ---------- */
 const formulaText = name => SCALES[name].map(i => STEP_NAME[i]).join(' · ');
@@ -1197,7 +1214,7 @@ const TAB_INFO = {
 };
 function setTab(t) {
   tabJump = true;
-  stopProg(); stopBase(); pararGravacao();
+  stopProg(); // a base e a gravação continuam tocando em outra aba (a barra embaixo mostra e para)
   document.body.classList.remove('sheet-open');
   if (!TAB_INFO[t]) t = 'escalas';
   const [title, sub, short] = TAB_INFO[t];
@@ -1208,15 +1225,13 @@ function setTab(t) {
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   Object.keys(TAB_INFO).forEach(x => $('tab-' + x).hidden = x !== t);
   $('root').closest('.bar').hidden = t !== 'escalas' && t !== 'campos';
-  render(); window.scrollTo(0, 0);
+  render(); window.scrollTo(0, 0); nowBar();
 }
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => setTab(b.dataset.tab));
 $('root').onchange = e => { state.root = +e.target.value; state.sel = null; state.fsel = null; render(); };
 $('sharps').onchange = e => { state.sharps = e.target.checked; fillRoots(); render(); };
-$('frets').onchange = e => { state.frets = +e.target.value; render(); };
 $('all').onchange = e => { state.all = e.target.checked; render(); };
 $('hide').onchange = e => { state.hide = e.target.value === '1'; state.revealed.clear(); render(); };
-$('frets2').onchange = e => { state.frets2 = +e.target.value; render(); };
 $('ctype').onchange = e => { state.ctype = e.target.value; state.cvoice = null; render(); };
 [['gkind', 'kind'], ['gtri', 'tri'], ['gset', 'set'], ['gext', 'ext'], ['glabels', 'labels']].forEach(([id, k]) =>
   $(id).onchange = e => { state.g[k] = e.target.value; state.g.pos = null; state.g.limit = 0; render(); });
@@ -1253,15 +1268,6 @@ $('fplus').onclick = () => { fs = Math.min(1.6, +(fs + 0.15).toFixed(2)); applyF
 $('fminus').onclick = () => { fs = Math.max(0.85, +(fs - 0.15).toFixed(2)); applyFs(); };
 applyFs();
 
-let lastPer = 0;
-const observe = (fn, target) => window.ResizeObserver ? new ResizeObserver(fn).observe(target) : (addEventListener('resize', fn), setTimeout(fn));
-observe(() => {
-  const id = { escalas: 'board', acordes: 'board2', progressoes: 'board3', guitarra: 'board4' }[state.tab];
-  const host = id && $(id);
-  if (!host || !host.clientWidth) return;
-  const p = perRowFor(host.clientWidth);
-  if (p !== lastPer) { lastPer = p; render(); }
-}, document.body);
 
 // filtros curtos viram botões (tudo do mesmo tamanho, sem lista abrindo no meio da tela)
 function segmentize(id) {
@@ -1275,7 +1281,7 @@ function segmentize(id) {
   const sync = () => box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === sel.value));
   sync();
 }
-['hide', 'frets', 'frets2', 'region', 'copen', 'cbarre', 'cbass', 'cmin', 'gkind', 'gtri', 'gset', 'glabels', 'pmode', 'plabels'].forEach(segmentize);
+['hide', 'region', 'copen', 'cbarre', 'cbass', 'cmin', 'gkind', 'gtri', 'gset', 'glabels', 'pmode', 'plabels'].forEach(segmentize);
 
 // listas longas: menu próprio no lugar da lista nativa do navegador
 const dropdowns = [];

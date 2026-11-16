@@ -79,8 +79,8 @@ nav#tabs button.on svg{stroke:var(--acc)}
 details{padding:10px 14px;margin:8px 0}
 summary{cursor:pointer;font-weight:700;font-size:1.05rem}
 .board-wrap{padding:8px 4px;margin:8px 0}
-#board svg,#board2 svg,#board3 svg,#board4 svg{width:100%;height:auto;display:block;margin:0 auto 8px}
-#board svg{max-width:none!important}
+#board svg,#board2 svg,#board3 svg,#board4 svg,#bBoard svg,#fboard svg{width:100%;min-width:900px;height:auto;display:block;margin:0 auto 4px;max-width:none!important}
+.board-wrap{overflow-x:auto}
 .legend{font-size:.85rem;color:var(--mut);margin:4px 0}
 .d{display:inline-block;width:12px;height:12px;border-radius:50%;margin:0 4px 0 10px;vertical-align:middle}
 .d.o{background:#f59e0b}.d.b{background:#38bdf8}.d.g{background:#4ade80}
@@ -141,17 +141,13 @@ ol.str{padding-left:1.2rem;margin:6px 0}
 /* ---------- telas maiores ---------- */
 @media (min-width:900px){
   #fieldCards,#scaleCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:0 14px}
-  .layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:18px;align-items:start}
-  aside{position:sticky;top:calc(var(--head-h) + 12px);align-self:start}
-  aside .controls{flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 2px 10px var(--shadow)}
-  aside .controls label{min-width:0;width:100%}
+  /* filtros ficam em cima (não ao lado), para o braço usar a largura toda */
+  aside .controls{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 2px 10px var(--shadow);margin-bottom:12px}
+  aside .controls label{flex:1 1 220px}
   aside .seg button{background:var(--inner)}
 }
 @media (min-width:1100px){ .grid{gap:14px} }
 @media (min-width:1500px){
-  #tab-escalas{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start}
-  #scaleCards{display:block!important}
-  .side{position:sticky;top:calc(var(--head-h) + 12px);max-height:calc(100vh - var(--head-h) - 24px);overflow:auto}
 }
 
 /* ---------- celular: abas viram barra fixa embaixo ---------- */
@@ -213,8 +209,10 @@ svg .nt{cursor:pointer}
 .fpanel .vc svg{max-width:150px}
 .clayout{display:block}
 @media (min-width:900px){
-  .clayout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
-  .fpanel{position:sticky;top:calc(var(--head-h) + 12px);max-height:calc(100vh - var(--head-h) - 24px);overflow:auto}
+  /* o acorde escolhido (com o braço inteiro) aparece em cima dos campos, na largura toda */
+  .clayout{display:flex;flex-direction:column;gap:14px}
+  .fpanel{order:-1}
+  .fpanel.empty{display:none}
   #fieldCards{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
 }
 @media (max-width:899px){
@@ -436,7 +434,6 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 #fieldCards .frow h3{margin:12px 0 4px}
 #fieldCards .frow .shapes{grid-template-columns:repeat(auto-fill,minmax(calc(130px * var(--fs)),1fr))}
 #fieldCards .fboard{margin-top:6px;overflow-x:auto}
-#fboard svg{width:100%;min-width:720px;display:block}
 /* o campo aberto fica no meio da página: nunca preso na tela (era isso que fazia a tela subir) */
 #fieldCards .fpanel.frow{position:relative;top:auto;left:auto;right:auto;bottom:auto;z-index:auto;max-height:none;overflow:visible;padding:12px 14px}
 
@@ -490,3 +487,12 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 .rxpick{display:grid;gap:4px;max-height:280px;overflow-y:auto;padding:6px;margin:6px 0;border:2px solid var(--border);border-radius:12px;background:var(--inner)}
 .rxpick button{font:inherit;text-align:left;padding:10px 12px;border-radius:10px;border:2px solid transparent;background:none;color:var(--fg);cursor:pointer}
 .rxpick button.on{border-color:var(--acc);background:var(--acc-bg);font-weight:700}
+
+/* tocando em outra aba: barra fixa embaixo com o nome e Parar */
+#nowBar{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:45;width:min(640px,calc(100% - 16px));display:flex;gap:8px;align-items:center;
+  background:var(--card);border:2px solid var(--acc);border-radius:16px;padding:8px 10px;box-shadow:0 8px 28px var(--shadow-strong)}
+#nowBar .nbgo{flex:1;min-width:0;min-height:48px;text-align:left;background:none;border:0;color:inherit;font:inherit;cursor:pointer;display:flex;flex-direction:column;justify-content:center}
+#nowBar .nbgo span{font-size:.8rem;color:var(--mut)}
+#nowBar .nbgo b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.nb-on main{padding-bottom:90px}
+@media (max-width:760px){ #nowBar{bottom:calc(80px + env(safe-area-inset-bottom))} body.nb-on main{padding-bottom:170px} }
