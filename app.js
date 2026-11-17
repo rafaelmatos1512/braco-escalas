@@ -68,6 +68,7 @@ function drawRow(host, from, to, o) {
         const isRoot = nt === o.rootPc && (!o.hl || hi);
         fill = isRoot ? '#f59e0b' : hi ? '#4ade80' : on ? '#38bdf8' : 'var(--off)';
         op = o.hl && !hi ? .25 : on ? 1 : .8;
+        if (o.range && (f < o.range[0] || f > o.range[1])) op = Math.min(op, .14); // fora da parte do braço escolhida: apagada
       }
       const cx = f === 0 ? LEFT - 28 : LEFT + (f - from + 0.5) * FW;
       const m = midiAt(s, f), sf = s + ',' + f;
@@ -994,7 +995,7 @@ function renderEscalas() {
   if (state.schordKey !== state.root + '|' + state.scale + '|' + state.sharps) { state.schordKey = state.root + '|' + state.scale + '|' + state.sharps; state.schord = null; }
   const sch = hf && state.schord != null ? hf[state.schord] : null;
   drawBoard($('board'), state.frets, {
-    inScale: new Set(notes), names, hl: sch ? sch.notes : state.sel ? state.sel.notes : null, rootPc: state.root, all: state.all,
+    inScale: new Set(notes), names, hl: sch ? sch.notes : state.sel ? state.sel.notes : null, range: state.ereg && state.ereg !== 'all' ? state.ereg.split('-').map(Number) : null, rootPc: state.root, all: state.all,
     hide: state.hide, revealed: state.revealed,
     onReveal: state.hide ? k => { if (!state.revealed.has(k)) { state.revealed.add(k); keepScroll(renderEscalas); } } : null });
   $('trainBar').hidden = !state.hide;
@@ -1331,7 +1332,7 @@ function segmentize(id) {
   const sync = () => box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === sel.value));
   sync();
 }
-['hide', 'region', 'copen', 'cbarre', 'cbass', 'cmin', 'gkind', 'gtri', 'gset', 'glabels', 'pmode', 'plabels'].forEach(segmentize);
+['hide', 'ereg', 'region', 'copen', 'cbarre', 'cbass', 'cmin', 'gkind', 'gtri', 'gset', 'glabels', 'pmode', 'plabels'].forEach(segmentize);
 
 // listas longas: menu próprio no lugar da lista nativa do navegador
 const dropdowns = [];
@@ -1376,6 +1377,7 @@ document.addEventListener('click', () => dropdowns.forEach(d => d.close()));
 document.addEventListener('keydown', e => { if (e.key === 'Escape') dropdowns.forEach(d => d.close()); });
 // a lista de escalas é preenchida na primeira renderização
 if (!$('scale').options.length) Object.keys(SCALES).forEach(n => $('scale').add(new Option(n, n)));
+$('ereg').onchange = e => { state.ereg = e.target.value; render(); };
 $('scale').onchange = e => { state.scale = e.target.value; state.sel = null; render(); };
 fillChordSelects();
 dropdown('root', 3); dropdown('scale'); dropdown('ctype'); dropdown('gext');
