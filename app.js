@@ -969,7 +969,7 @@ function renderScaleChords(hf, sp) {
   });
   box.innerHTML = (campo ? `<h3>Acordes desta escala (campo harmônico)</h3><p class="hint">São os 7 acordes que combinam com a escala ${esc(sp[0] + ' ' + state.scale)}. `
     : state.scale === 'Blues' ? `<h3>Acordes do blues</h3><p class="hint">No blues em ${esc(sp[0])} se usam estes 3 acordes com sétima (I7, IV7 e V7), os mesmos do blues de 12 compassos. A escala Blues serve para solar em cima de todos eles. `
-    : `<h3>Acordes desta escala</h3><p class="hint">A ${esc(sp[0] + ' ' + state.scale)} tem ${sp.length} notas; cada uma tem o seu acorde. Eles vêm da escala ${state.scale.endsWith('Maior') ? 'Maior' : 'Menor'} de ${esc(sp[0])}, de onde a pentatônica sai (ela é essa escala sem 2 notas). `) + `Toque num acorde para ouvir e ver as notas dele em verde no braço; toque de novo para voltar à escala.</p>` +
+    : `<h3>Acordes desta escala</h3><p class="hint">A ${esc(sp[0] + ' ' + state.scale)} tem ${sp.length} notas; cada uma tem o seu acorde. Eles vêm da escala ${state.scale.endsWith('Maior') ? 'Maior' : 'Menor'} de ${esc(sp[0])}, de onde a pentatônica sai (ela é essa escala sem 2 notas). `) + `Toque num acorde para ouvir e ver no braço a mesma forma do desenho; toque de novo para voltar à escala.</p>` +
     seqCards(chords, state.schord);
   box.querySelectorAll('.pc').forEach(b => b.onclick = () => {
     const i = +b.dataset.i, same = state.schord === i;
@@ -995,9 +995,12 @@ function renderEscalas() {
   const hf = scaleChords(state.root, state.scale, state.sharps);
   if (state.schordKey !== state.root + '|' + state.scale + '|' + state.sharps) { state.schordKey = state.root + '|' + state.scale + '|' + state.sharps; state.schord = null; }
   const sch = hf && state.schord != null ? hf[state.schord] : null;
+  // acorde escolhido: o braço mostra a mesma forma do desenho (não as notas dele espalhadas pelo braço todo)
+  const schV = sch && bestVoicing(sch.notes[0], sch.type);
+  const schNames = sch && nameMap(sch.notes, spellChordFromRoot(sch.rn || sch.chord.replace(/[m°+]$/, '').replace(/7$/, ''), CHORD_TYPES[sch.type].iv, CHORD_TYPES[sch.type].letters));
   drawBoard($('board'), state.frets, {
-    inScale: new Set(notes), names, hl: sch ? sch.notes : state.sel ? state.sel.notes : null, range: state.ereg && state.ereg !== 'all' ? state.ereg.split('-').map(Number) : null,
-    only: state.eonce === '1' ? oneOctave(state.root, notes, ...(state.ereg && state.ereg !== 'all' ? state.ereg.split('-').map(Number) : [0, 24])) : null, rootPc: state.root, all: state.all,
+    inScale: new Set(notes), names: schNames || names, exact: schV ? schV.frets : null, hl: state.sel ? state.sel.notes : null, range: state.ereg && state.ereg !== 'all' ? state.ereg.split('-').map(Number) : null,
+    only: state.eonce === '1' ? oneOctave(state.root, notes, ...(state.ereg && state.ereg !== 'all' ? state.ereg.split('-').map(Number) : [0, 24])) : null, rootPc: sch ? sch.notes[0] : state.root, all: state.all,
     hide: state.hide, revealed: state.revealed,
     onReveal: state.hide ? k => { if (!state.revealed.has(k)) { state.revealed.add(k); keepScroll(renderEscalas); } } : null });
   $('trainBar').hidden = !state.hide;
