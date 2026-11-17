@@ -589,7 +589,7 @@ function renderBase() {
   const b = state.b;
   // duas fontes: a base do próprio app (sintetizada) ou as gravações que você guardou
   $('bSrc').innerHTML = [['app', 'Base do app'], ['rec', 'Minhas gravações']].map(([k, l]) => `<button type="button" data-src="${k}" class="${(b.fonte || 'app') === k ? 'on' : ''}">${l}</button>`).join('');
-  $('bSrc').querySelectorAll('button').forEach(x => x.onclick = () => { b.fonte = x.dataset.src; if (b.fonte === 'rec') stopBase(); else pararGravacao(); renderBase(); });
+  $('bSrc').querySelectorAll('button').forEach(x => x.onclick = () => { b.fonte = x.dataset.src; renderBase(); nowBar(); }); // o que está tocando continua (a barra embaixo mostra)
   $('bSynth').hidden = b.fonte === 'rec'; $('bRec').hidden = b.fonte !== 'rec';
   if (b.fonte === 'rec') { renderRec(); return; }
   const { name, chords } = baseChords();
@@ -959,6 +959,25 @@ function nowBar() {
 /* ---------- ABA ESCALAS ---------- */
 const formulaText = name => SCALES[name].map(i => STEP_NAME[i]).join(' · ');
 
+function renderScaleChords(hf, sp) {
+  const box = $('scaleChords');
+  if (!hf) {
+    box.innerHTML = `<h3>Acordes desta escala</h3><p class="hint">A escala ${esc(state.scale)} tem ${sp.length} notas. Os acordes do campo harmônico saem das escalas de 7 notas, como a Maior e a Menor: escolha uma delas para ver os acordes aqui.</p>`;
+    return;
+  }
+  const chords = hf.map(c => {
+    const t = CHORD_TYPES[c.type], rn = c.chord.replace(/[m°+]$/, '');
+    return { name: c.chord, roman: c.roman, rootPc: c.notes[0], pcs: c.notes, names: spellChordFromRoot(rn, t.iv, t.letters), v: bestVoicing(c.notes[0], c.type) };
+  });
+  box.innerHTML = `<h3>Acordes desta escala (campo harmônico)</h3><p class="hint">São os 7 acordes que combinam com a escala ${esc(sp[0] + ' ' + state.scale)}. Toque num acorde para ouvir e ver as notas dele em verde no braço; toque de novo para voltar à escala.</p>` +
+    seqCards(chords, state.schord);
+  box.querySelectorAll('.pc').forEach(b => b.onclick = () => {
+    const i = +b.dataset.i, same = state.schord === i;
+    state.schord = same ? null : i; state.sel = null;
+    if (!same) strumV(chords[i].v);
+    keepScroll(renderEscalas);
+  });
+}
 function renderEscalas() {
   $('scale').value = state.scale;
   const notes = scaleNotes(state.root, state.scale);
@@ -972,8 +991,12 @@ function renderEscalas() {
   $('playScale').onclick = () => { let m = 48 + state.root; sequence([m, ...SCALES[state.scale].map(i => (m += i))]); };
   const rk = [state.root, state.scale, state.frets, state.all, state.sharps].join('|');
   if (rk !== state.revealKey) { state.revealKey = rk; state.revealed.clear(); }
+  // acordes da escala (campo harmônico): tocar num deixa as notas dele em verde no braço
+  const hf = harmonicField(state.root, state.scale, state.sharps);
+  if (state.schordKey !== state.root + '|' + state.scale + '|' + state.sharps) { state.schordKey = state.root + '|' + state.scale + '|' + state.sharps; state.schord = null; }
+  const sch = hf && state.schord != null ? hf[state.schord] : null;
   drawBoard($('board'), state.frets, {
-    inScale: new Set(notes), names, hl: state.sel ? state.sel.notes : null, rootPc: state.root, all: state.all,
+    inScale: new Set(notes), names, hl: sch ? sch.notes : state.sel ? state.sel.notes : null, rootPc: state.root, all: state.all,
     hide: state.hide, revealed: state.revealed,
     onReveal: state.hide ? k => { if (!state.revealed.has(k)) { state.revealed.add(k); keepScroll(renderEscalas); } } : null });
   $('trainBar').hidden = !state.hide;
@@ -994,6 +1017,7 @@ function renderEscalas() {
     $('selInfo').innerHTML = `<p><b>${sp[i]}</b> (${ptOf(sp[i])}) é a ${ORD[i]} nota da escala, o grau ${labels[i]}. ` +
       (i === 0 ? 'É a tônica, a "nota de casa" onde a escala começa e termina.' : 'Aparece em verde no braço, em todas as posições onde ela existe.') + '</p>';
   } else $('selInfo').hidden = true;
+  renderScaleChords(hf, sp);
 
   $('scaleCards').innerHTML = Object.keys(SCALES).map(name => {
     const ns = spelledScale(state.root, name, state.sharps), lb = scaleDegreeLabels(state.root, name, state.sharps);
@@ -1007,7 +1031,7 @@ function renderEscalas() {
     const name = c.dataset.s, i = +c.dataset.i;
     const same = state.sel && state.sel.scale === name && state.sel.idx === i;
     state.scale = name;
-    state.sel = same ? null : { scale: name, idx: i, notes: [scaleNotes(state.root, name)[i]] };
+    state.sel = same ? null : { scale: name, idx: i, notes: [scaleNotes(state.root, name)[i]] }; state.schord = null;
     if (!same) playNote(48 + state.root + ((state.sel.notes[0] - state.root + 12) % 12));
     render();
   });
