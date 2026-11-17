@@ -440,3 +440,20 @@ export function tensionChords(key, mode, chords, useSharps) {
     return { ...n, inField: c.inField !== false && n.inField }; // de fora se o original era de fora ou se a nota a mais sai do tom
   });
 }
+
+// cada nota da escala uma vez só, numa oitava, dentro das casas lo..hi: começa na tônica mais grave do trecho
+// e sobe até antes da próxima tônica. Devolve as posições como 'corda,casa' (corda 0 = 6ª).
+const OPEN = [40, 45, 50, 55, 59, 64];
+export function oneOctave(root, notes, lo = 0, hi = 24) {
+  const has = new Set(notes), pos = [];
+  for (let s = 0; s < 6; s++) for (let f = lo; f <= hi; f++) if (has.has((OPEN[s] + f) % 12)) pos.push({ s, f, m: OPEN[s] + f });
+  pos.sort((a, b) => a.m - b.m || b.s - a.s);
+  const start = pos.find(p => p.m % 12 === root) || pos[0];
+  const out = new Set(), seen = new Set();
+  if (!start) return out;
+  for (const p of pos) {
+    if (p.m < start.m || p.m >= start.m + 12 || seen.has(p.m)) continue;
+    seen.add(p.m); out.add(p.s + ',' + p.f);
+  }
+  return out;
+}

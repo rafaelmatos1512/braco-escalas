@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scaleNotes, harmonicField, scaleChords, noteName, noteAt } from '../music.js';
+import { scaleNotes, harmonicField, scaleChords, oneOctave, noteName, noteAt } from '../music.js';
 
 const names = (pcs, sharps = false) => pcs.map(n => noteName(n, sharps)).join(' ');
 
@@ -124,4 +124,14 @@ test('acordes de escalas sem campo harmônico (pentatônicas e blues)', () => {
       assert.ok(cs.length >= 3, name + r);
       cs.forEach(c => c.notes.forEach(x => assert.ok(set.has(x), `${c.chord} em ${name}`)));
     }
+});
+
+test('cada nota uma vez: uma oitava da escala no trecho escolhido', () => {
+  const am = scaleNotes(9, 'Pentatônica Menor');
+  const p = [...oneOctave(9, am, 5, 9)];
+  assert.equal(p.length, 5);
+  assert.equal(p[0], '0,5'); // começa no A da 6ª corda, casa 5
+  const pcs = p.map(x => { const [s, f] = x.split(',').map(Number); return noteAt(s, f); });
+  assert.deepEqual([...new Set(pcs)].sort((a, b) => a - b), [...am].sort((a, b) => a - b));
+  for (let r = 0; r < 12; r++) assert.equal(oneOctave(r, scaleNotes(r, 'Maior')).size, 7);
 });
