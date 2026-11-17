@@ -144,19 +144,22 @@ export function harmonicField(root, name, useSharps) {
   });
 }
 
-// acordes de uma escala, para qualquer escala: com 7 notas é o campo harmônico; com 5 ou 6 (pentatônicas, blues),
-// para cada nota o primeiro acorde que usa só notas da escala (maior, menor, sus4, sus2, power chord). Nota sem acorde fica de fora.
-const CHORD_TRY = [['maior', '', [0, 4, 7]], ['menor', 'm', [0, 3, 7]], ['sus4', 'sus4', [0, 5, 7]], ['sus2', 'sus2', [0, 2, 7]], ['5', '5', [0, 7]]];
+// acordes de uma escala, para qualquer escala. 7 notas: o campo harmônico. Pentatônica: um acorde para cada nota,
+// tirado da escala de 7 notas de onde ela vem (Maior ou Menor). Blues: os 3 acordes de costume, com sétima (I7, IV7, V7).
+const PARENT = { 'Pentatônica Maior': 'Maior', 'Pentatônica Menor': 'Menor' };
 export function scaleChords(root, name, useSharps) {
   const f = harmonicField(root, name, useSharps);
   if (f) return f;
-  const n = scaleNotes(root, name), sp = spelledScale(root, name, useSharps), lb = scaleDegreeLabels(root, name, useSharps), has = new Set(n);
-  const out = [];
-  n.forEach((r, i) => {
-    const t = CHORD_TRY.find(([, , iv]) => iv.every(x => has.has((r + x) % 12)));
-    if (t) out.push({ chord: sp[i] + t[1], rn: sp[i], type: t[0], roman: lb[i], notes: t[2].map(x => (r + x) % 12) });
-  });
-  return out;
+  const n = scaleNotes(root, name);
+  if (PARENT[name]) return harmonicField(root, PARENT[name], useSharps).filter(c => n.includes(c.notes[0]));
+  if (name === 'Blues') {
+    const sp = spelledScale(root, 'Maior', useSharps);
+    return [[0, 0, 'I7'], [3, 5, 'IV7'], [4, 7, 'V7']].map(([d, st, roman]) => {
+      const r = (root + st) % 12;
+      return { chord: sp[d] + '7', rn: sp[d], type: '7', roman, notes: [0, 4, 7, 10].map(x => (r + x) % 12) };
+    });
+  }
+  return [];
 }
 
 // campo harmônico com sétima (tétrades): Imaj7, ii7, iii7, IVmaj7, V7, vi7, viiø na escala maior

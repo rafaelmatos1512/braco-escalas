@@ -115,14 +115,13 @@ test('campo harmônico com sétima: C maior e A menor', async () => {
 test('acordes de escalas sem campo harmônico (pentatônicas e blues)', () => {
   const ch = (root, name) => scaleChords(root, name, false).map(c => c.chord).join(' ');
   assert.equal(ch(0, 'Maior'), 'C Dm Em F G Am B°'); // 7 notas: o campo harmônico
-  assert.equal(ch(0, 'Pentatônica Maior'), 'C Dsus4 Gsus4 Am'); // E não tem acorde só com notas da escala
-  assert.equal(ch(9, 'Pentatônica Menor'), 'Am C Dsus4 Gsus4');
-  assert.equal(ch(0, 'Blues'), 'Cm Eb Fsus4 Bbsus4');
-  for (const name of ['Pentatônica Maior', 'Pentatônica Menor', 'Blues'])
+  assert.equal(ch(0, 'Pentatônica Maior'), 'C Dm Em G Am'); // um para cada nota, da escala Maior
+  assert.equal(ch(9, 'Pentatônica Menor'), 'Am C Dm Em G'); // um para cada nota, da escala Menor
+  assert.equal(ch(9, 'Blues'), 'A7 D7 E7');
+  for (const name of ['Pentatônica Maior', 'Pentatônica Menor'])
     for (let r = 0; r < 12; r++) {
-      const set = new Set(scaleNotes(r, name)), cs = scaleChords(r, name, true);
-      assert.ok(cs.length >= 3, name + r);
-      cs.forEach(c => c.notes.forEach(x => assert.ok(set.has(x), `${c.chord} em ${name}`)));
+      const ns = scaleNotes(r, name), cs = scaleChords(r, name, true);
+      assert.deepEqual(cs.map(c => c.notes[0]), ns, name + r); // cada nota da escala tem o seu acorde, na ordem
     }
 });
 
