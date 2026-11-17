@@ -144,6 +144,21 @@ export function harmonicField(root, name, useSharps) {
   });
 }
 
+// acordes de uma escala, para qualquer escala: com 7 notas é o campo harmônico; com 5 ou 6 (pentatônicas, blues),
+// para cada nota o primeiro acorde que usa só notas da escala (maior, menor, sus4, sus2, power chord). Nota sem acorde fica de fora.
+const CHORD_TRY = [['maior', '', [0, 4, 7]], ['menor', 'm', [0, 3, 7]], ['sus4', 'sus4', [0, 5, 7]], ['sus2', 'sus2', [0, 2, 7]], ['5', '5', [0, 7]]];
+export function scaleChords(root, name, useSharps) {
+  const f = harmonicField(root, name, useSharps);
+  if (f) return f;
+  const n = scaleNotes(root, name), sp = spelledScale(root, name, useSharps), lb = scaleDegreeLabels(root, name, useSharps), has = new Set(n);
+  const out = [];
+  n.forEach((r, i) => {
+    const t = CHORD_TRY.find(([, , iv]) => iv.every(x => has.has((r + x) % 12)));
+    if (t) out.push({ chord: sp[i] + t[1], rn: sp[i], type: t[0], roman: lb[i], notes: t[2].map(x => (r + x) % 12) });
+  });
+  return out;
+}
+
 // campo harmônico com sétima (tétrades): Imaj7, ii7, iii7, IVmaj7, V7, vi7, viiø na escala maior
 const SEVENTH = { 'maior:11': ['maj7', 'maj7'], 'maior:10': ['7', '7'], 'menor:10': ['m7', '7'], 'menor:11': ['mmaj7', '(maj7)'],
   'dim:10': ['m7b5', 'ø'], 'dim:9': ['dim7', '°7'], 'aug:11': ['maj7#5', 'maj7(#5)'] };

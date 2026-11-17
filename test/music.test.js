@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scaleNotes, harmonicField, noteName, noteAt } from '../music.js';
+import { scaleNotes, harmonicField, scaleChords, noteName, noteAt } from '../music.js';
 
 const names = (pcs, sharps = false) => pcs.map(n => noteName(n, sharps)).join(' ');
 
@@ -110,4 +110,18 @@ test('campo harmônico com sétima: C maior e A menor', async () => {
   assert.deepEqual(harmonicField7(0, 'Maior', true).map(c => c.roman), ['Imaj7', 'ii7', 'iii7', 'IVmaj7', 'V7', 'vi7', 'viiø']);
   assert.deepEqual(harmonicField7(9, 'Menor Harmônica', true).map(c => c.chord).slice(0, 2), ['Am(maj7)', 'Bm7(b5)']);
   assert.equal(harmonicField7(9, 'Menor Harmônica', true)[6].chord, 'G#°7');
+});
+
+test('acordes de escalas sem campo harmônico (pentatônicas e blues)', () => {
+  const ch = (root, name) => scaleChords(root, name, false).map(c => c.chord).join(' ');
+  assert.equal(ch(0, 'Maior'), 'C Dm Em F G Am B°'); // 7 notas: o campo harmônico
+  assert.equal(ch(0, 'Pentatônica Maior'), 'C Dsus4 Gsus4 Am'); // E não tem acorde só com notas da escala
+  assert.equal(ch(9, 'Pentatônica Menor'), 'Am C Dsus4 Gsus4');
+  assert.equal(ch(0, 'Blues'), 'Cm Eb Fsus4 Bbsus4');
+  for (const name of ['Pentatônica Maior', 'Pentatônica Menor', 'Blues'])
+    for (let r = 0; r < 12; r++) {
+      const set = new Set(scaleNotes(r, name)), cs = scaleChords(r, name, true);
+      assert.ok(cs.length >= 3, name + r);
+      cs.forEach(c => c.notes.forEach(x => assert.ok(set.has(x), `${c.chord} em ${name}`)));
+    }
 });

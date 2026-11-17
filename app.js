@@ -1,5 +1,5 @@
 import { CHORD_ORDER, SHARP, FLAT, SCALES, CHORD_TYPES, SCALE_INFO, STEP_NAME, noteName, noteAt, ptOf, spelledScale, spelledChord, nameMap, intervalNames, scaleDegreeLabels, spellChordFromRoot, harmonicField7, PROGRESSIONS, PROG_STYLES, progRoman, progNick, progressionChords, tensionChords, customChords, itemsFromChords,
-  scaleNotes, harmonicField } from './music.js';
+  scaleNotes, harmonicField, scaleChords } from './music.js';
 import { midiAt, playNote, strum, sequence, schedule, stopAll, soundOn, setSound } from './audio.js';
 import { STRINGS as TSTR, nearestString, centsToString, tuneStatus, startMic, stopMic, micOn } from './tuner.js';
 import { createPlayer, GROOVES, GROOVE_ORDER, GROOVE_OF } from './backing.js';
@@ -961,15 +961,13 @@ const formulaText = name => SCALES[name].map(i => STEP_NAME[i]).join(' · ');
 
 function renderScaleChords(hf, sp) {
   const box = $('scaleChords');
-  if (!hf) {
-    box.innerHTML = `<h3>Acordes desta escala</h3><p class="hint">A escala ${esc(state.scale)} tem ${sp.length} notas. Os acordes do campo harmônico saem das escalas de 7 notas, como a Maior e a Menor: escolha uma delas para ver os acordes aqui.</p>`;
-    return;
-  }
+  const campo = sp.length === 7;
   const chords = hf.map(c => {
-    const t = CHORD_TYPES[c.type], rn = c.chord.replace(/[m°+]$/, '');
+    const t = CHORD_TYPES[c.type], rn = c.rn || c.chord.replace(/[m°+]$/, '');
     return { name: c.chord, roman: c.roman, rootPc: c.notes[0], pcs: c.notes, names: spellChordFromRoot(rn, t.iv, t.letters), v: bestVoicing(c.notes[0], c.type) };
   });
-  box.innerHTML = `<h3>Acordes desta escala (campo harmônico)</h3><p class="hint">São os 7 acordes que combinam com a escala ${esc(sp[0] + ' ' + state.scale)}. Toque num acorde para ouvir e ver as notas dele em verde no braço; toque de novo para voltar à escala.</p>` +
+  box.innerHTML = (campo ? `<h3>Acordes desta escala (campo harmônico)</h3><p class="hint">São os 7 acordes que combinam com a escala ${esc(sp[0] + ' ' + state.scale)}. `
+    : `<h3>Acordes que combinam com esta escala</h3><p class="hint">A ${esc(sp[0] + ' ' + state.scale)} tem só ${sp.length} notas, então não forma o campo harmônico completo. Estes são os acordes que usam só notas dela (sus = acorde suspenso, nem alegre nem triste; 5 = power chord). `) + `Toque num acorde para ouvir e ver as notas dele em verde no braço; toque de novo para voltar à escala.</p>` +
     seqCards(chords, state.schord);
   box.querySelectorAll('.pc').forEach(b => b.onclick = () => {
     const i = +b.dataset.i, same = state.schord === i;
@@ -992,7 +990,7 @@ function renderEscalas() {
   const rk = [state.root, state.scale, state.frets, state.all, state.sharps].join('|');
   if (rk !== state.revealKey) { state.revealKey = rk; state.revealed.clear(); }
   // acordes da escala (campo harmônico): tocar num deixa as notas dele em verde no braço
-  const hf = harmonicField(state.root, state.scale, state.sharps);
+  const hf = scaleChords(state.root, state.scale, state.sharps);
   if (state.schordKey !== state.root + '|' + state.scale + '|' + state.sharps) { state.schordKey = state.root + '|' + state.scale + '|' + state.sharps; state.schord = null; }
   const sch = hf && state.schord != null ? hf[state.schord] : null;
   drawBoard($('board'), state.frets, {
