@@ -488,11 +488,21 @@ dialog#tunerDlg .small{color:var(--mut);font-size:.85rem;margin:0 0 10px}
 .rxpick button{font:inherit;text-align:left;padding:10px 12px;border-radius:10px;border:2px solid transparent;background:none;color:var(--fg);cursor:pointer}
 .rxpick button.on{border-color:var(--acc);background:var(--acc-bg);font-weight:700}
 
-/* tocando em outra aba: barra fixa embaixo com o nome e Parar */
-#nowBar{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:45;width:min(640px,calc(100% - 16px));display:flex;gap:8px;align-items:center;
-  background:var(--card);border:2px solid var(--acc);border-radius:16px;padding:8px 10px;box-shadow:0 8px 28px var(--shadow-strong)}
-#nowBar .nbgo{flex:1;min-width:0;min-height:48px;text-align:left;background:none;border:0;color:inherit;font:inherit;cursor:pointer;display:flex;flex-direction:column;justify-content:center}
-#nowBar .nbgo span{font-size:.8rem;color:var(--mut)}
-#nowBar .nbgo b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* tocando (ou pausado) em outra aba: barra fixa embaixo, só nome, voltar, iniciar/pausar (um botão só) e fechar */
+#nowBar{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:45;width:min(520px,calc(100% - 16px));display:flex;gap:4px;align-items:center;
+  background:var(--card);border:1px solid var(--border);border-radius:999px;padding:6px 6px 6px 18px;box-shadow:0 8px 28px var(--shadow-strong)}
+#nowBar .nbgo{flex:1;min-width:0;min-height:48px;text-align:left;background:none;border:0;color:inherit;font:inherit;font-weight:700;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#nowBar.pausado .nbgo{color:var(--mut)}
+#nowBar .nbbtn{flex:none;width:48px;height:48px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;transition:transform .1s,filter .15s}
+#nowBar .nbbtn svg{width:22px;height:22px;fill:currentColor}
+#nowBar .nbbtn.pp{background:var(--acc);color:#1a1205}
+#nowBar .nbbtn.pp:hover{filter:brightness(1.08)}
+#nowBar .nbbtn.sec{background:none;color:var(--fg)}
+#nowBar .nbbtn.sec:hover{background:var(--inner)}
+#nowBar .nbbtn:active{transform:scale(.94)}
+/* botão que não serve agora (voltar com a base parada) fica apagado */
+#nowBar .nbbtn:disabled{background:none;color:var(--mut);opacity:.45;cursor:default;filter:none;transform:none}
+#nowBar button:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
 body.nb-on main{padding-bottom:90px}
 @media (max-width:760px){ #nowBar{bottom:calc(80px + env(safe-area-inset-bottom))} body.nb-on main{padding-bottom:170px} }

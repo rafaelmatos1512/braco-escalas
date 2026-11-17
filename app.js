@@ -527,11 +527,11 @@ function renderEditor(chords, keyName, scale) {
 
 /* ---------- ABA BASE (backing track) ---------- */
 const BPMS = [[60, 'Lento'], [80, 'Médio'], [100, 'Animado'], [120, 'Rápido']];
-state.b = { key: 0, mode: 'maior', src: 'ready', idx: 0, mine: 0, which: 'ready', style: '', bpm: 100, groove: 'pop', mix: { drums: true, bass: true, comp: true }, bars: 1, hide: false, playing: false, player: null, link: null, msg: '' };
+state.b = { key: 0, mode: 'maior', src: 'ready', idx: 0, mine: 0, which: 'ready', style: '', bpm: 100, groove: 'pop', mix: { drums: true, bass: true, comp: true }, bars: 1, hide: false, playing: false, pausada: false, player: null, link: null, msg: '' };
 function stopBase() {
   const b = state.b;
   if (b.player) { b.player.stop(); b.player = null; }
-  const was = b.playing; b.playing = false;
+  const was = b.playing; b.playing = false; b.pausada = false;
   if (was && state.tab === 'base') renderBase();
   nowBar();
 }
@@ -561,11 +561,11 @@ function startBase() {
   const b = state.b;
   if (!soundOn()) { b.msg = 'O som está desligado. Toque no alto-falante no alto da tela para ligar.'; renderBase(); return; }
   if (b.player) b.player.stop();
-  stopProg();
+  stopProg(); pararGravacao(); // uma coisa tocando por vez: a barra embaixo mostra só uma
   const { chords, name } = baseChords();
   b.msg = ''; b.cur = 0; b.nome = name;
   b.player = createPlayer({ chords: chords.map(c => ({ frets: c.v.frets, rootPc: c.rootPc, iv: CHORD_TYPES[c.type].iv })), bpm: b.bpm, bars: b.bars, groove: b.groove, mix: b.mix, onBeat: paintBeat });
-  b.playing = true; b.player.start();
+  b.playing = true; b.pausada = false; state.nb = 'base'; b.player.start();
   renderBase();
 }
 // desenho do acorde da vez, prévia do próximo e braço (só quando os acordes estão à mostra)
@@ -651,7 +651,7 @@ function renderBase() {
 /* ---------- CONTA (login) e MINHAS GRAVAÇÕES (faixas guardadas no servidor do app) ---------- */
 const conta = { usuario: null, cadastro: false, login: false, pronto: false, msg: '', err: false, senha: false };
 state.rx = { pasta: '', q: '', sel: null, faixas: [], pastas: [], extras: [], carregou: false, carregando: false, msg: '', err: false, edit: false, del: false, speed: 1, loop: true, nova: false, pastaEd: false, pastaDel: false, enviando: '', parar: false, destino: '', destMov: '' };
-const pararGravacao = () => { const a = $('rxAudio'); if (a && !a.paused) a.pause(); };
+const pararGravacao = () => { const a = $('rxAudio'); if (state.nb === 'rec') state.nb = null; if (a && !a.paused) a.pause(); };
 
 // progressões: com conta, ficam também no servidor (não somem se o navegador apagar os dados)
 let syncTimer = null;
@@ -910,20 +910,46 @@ async function acrescentar(lista) {
 }
 $('rxFile').onchange = e => acrescentar(e.target.files);
 $('rxDir').onchange = e => acrescentar(e.target.files);
-$('rxAudio').addEventListener('play', () => { stopBase(); nowBar(); });
+$('rxAudio').addEventListener('play', () => { state.nb = 'rec'; stopBase(); nowBar(); });
 ['pause', 'ended'].forEach(ev => $('rxAudio').addEventListener(ev, () => nowBar()));
-// barra embaixo quando algo toca fora da tela dele (outra aba ou outra pasta): mostra o nome, volta para ele e para
+const NB_ICON = {
+  back: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="2.6" height="14" rx="1"/><path d="M19 5v14L8.5 12z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
+  x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+};
+// barra embaixo com o que toca fora da tela dele (outra aba ou outra pasta), tocando ou pausado:
+// o nome (toque para abrir), voltar ao começo, iniciar, pausar e fechar. `state.nb` = o que está na barra ('rec' ou 'base'); fechar zera.
 function nowBar() {
   const bar = $('nowBar'), a = $('rxAudio'), r = state.rx, b = state.b;
-  const rec = !!a.src && !a.paused, f = rec && r.faixas.find(x => x.id === r.tocando);
+  const item = state.nb === 'rec' && a.src && r.tocando != null ? 'rec' : state.nb === 'base' && (b.playing || b.pausada) ? 'base' : null;
+  const rec = item === 'rec', tocando = rec ? !a.paused : b.playing;
   const naTela = state.tab === 'base' && (rec ? b.fonte === 'rec' && r.sel === r.tocando : b.fonte !== 'rec');
-  const nome = rec ? (f ? f.nome : 'gravação') : b.playing ? 'Base: ' + (b.nome || '') : '';
-  bar.hidden = !nome || naTela;
+  bar.hidden = !item || naTela;
   document.body.classList.toggle('nb-on', !bar.hidden);
   if (bar.hidden) return;
-  bar.innerHTML = `<button type="button" class="nbgo" id="nbGo" title="Abrir o que está tocando"><span>Tocando agora</span><b>🎵 ${esc(nome)}</b></button>` +
-    STOP_BTN.replace('id="pPlay"', 'id="nbStop"');
-  $('nbStop').onclick = () => { if (rec) a.pause(); else stopBase(); nowBar(); };
+  const f = rec && r.faixas.find(x => x.id === r.tocando);
+  const nome = rec ? (f ? f.nome : 'Gravação') : 'Base: ' + (b.nome || '');
+  bar.classList.toggle('pausado', !tocando);
+  const btn = (id, cls, label, icon, off) => `<button type="button" class="nbbtn ${cls}" id="${id}" aria-label="${label}" title="${label}"${off ? ' disabled' : ''}>${icon}</button>`;
+  bar.innerHTML = `<button type="button" class="nbgo" id="nbGo" title="Abrir">🎵 ${esc(nome)}</button>` +
+    btn('nbBack', 'sec', 'Voltar ao começo', NB_ICON.back, !rec && !tocando) + // base pausada já recomeça do começo
+    btn('nbPP', 'pp', tocando ? 'Pausar' : 'Iniciar', tocando ? NB_ICON.pause : NB_ICON.play) + // um botão só: troca entre iniciar e pausar
+    btn('nbX', 'sec', 'Fechar', NB_ICON.x);
+  $('nbBack').onclick = () => {
+    if (rec) { try { a.currentTime = 0; } catch {} } else startBase(); // a base recomeça a sequência
+    nowBar();
+  };
+  $('nbPP').onclick = () => {
+    if (tocando) { if (rec) a.pause(); else { stopBase(); b.pausada = true; } } // a base não tem "meio": iniciar recomeça a sequência
+    else if (rec) a.play().catch(() => {}); else startBase();
+    nowBar();
+  };
+  $('nbX').onclick = () => {
+    state.nb = null;
+    if (rec) { a.pause(); try { a.currentTime = 0; } catch {} } else stopBase();
+    nowBar();
+  };
   $('nbGo').onclick = () => {
     if (rec) { b.fonte = 'rec'; r.sel = r.tocando; r.edit = r.del = false; } else b.fonte = 'app';
     setTab('base');
@@ -1214,7 +1240,7 @@ const TAB_INFO = {
 };
 function setTab(t) {
   tabJump = true;
-  stopProg(); // a base e a gravação continuam tocando em outra aba (a barra embaixo mostra e para)
+  stopProg(); // a base e a gravação continuam tocando em outra aba (a barra embaixo pausa, continua e fecha)
   document.body.classList.remove('sheet-open');
   if (!TAB_INFO[t]) t = 'escalas';
   const [title, sub, short] = TAB_INFO[t];
